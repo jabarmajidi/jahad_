@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% load static %}
+
+
+{% block link %} {% endblock %}
+
+
+{% block body %}
+    <div class="container bg-dark-subtle rounded marginTop10" dir="rtl">
+        <div class="row justify-content-between mt-1">
+            <div class="col-lg-8 col-sm-8 text-right">
+                <div class="">
+                    <div>
+                        <h1 id="pageTitle" class="mt-2"></h1>
+                        <span id="pageSpan"></span>
+                    </div>
+                    {#                    <div class="text-center mt-4">#}
+                    {#                        <button class="btn btn-success mt-2">ورود به سامانه مدیریتی</button>#}
+                    {#                    </div>#}
+                </div>
+            </div>
+            <div class="col-lg-4 col-sm-4 text-left mt-1">
+                <img src="{% static 'images/logo.png' %}" width="100px" alt="تصویر پایه">
+            </div>
+        </div>
+    </div>
+    <div class="container mt-2" dir="rtl">
+        <div class="row justify-content-between">
+            <div class="col-lg-2-1 col-sm-2-1 card bg-dark-subtle" style="padding: 0; margin: 0;">
+                <img src="{% static 'images/adminMain.jpg' %}" class="card-img-top" style="height: 150px" alt="...">
+                <div class="margin-right-10 margin-left-10">
+                    <h4 class="card-title mt-1">حوزه مدیریت</h4>
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action active" aria-current="true">
+                            امکانات موجود
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">ویرایش ژئومتریک اطلاعات مکانی</a>
+                        <a href="#" class="list-group-item list-group-item-action">ویرایش اطلاعات توصیفی</a>
+                        <a href="#" class="list-group-item list-group-item-action">مدیریت دسترسی کاربران</a>
+                        <a class="list-group-item list-group-item-action">مدیریت گزارشات</a>
+                    </div>
+                    <div class="text-center mt-2 mb-1">
+                        <a class="btn btn-primary" href="/map">ورود به سامانه</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-2-1 col-sm-2-1 card bg-dark-subtle" style="padding: 0; margin: 0;">
+                <img src="{% static 'images/amozesh.jpg' %}" class="card-img-top" style="height: 150px" alt="...">
+                <div class="margin-right-10 margin-left-10">
+                    <h4 class="card-title mt-1">حوزه آموزشی</h4>
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action active bg-success border-success"
+                           aria-current="true">
+                            امکانات موجود
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">ویرایش ژئومتریک اطلاعات مکانی</a>
+                        <a href="#" class="list-group-item list-group-item-action">ویرایش اطلاعات توصیفی</a>
+                        <a href="#" class="list-group-item list-group-item-action">مدیریت دسترسی کاربران</a>
+                        <a class="list-group-item list-group-item-action">مدیریت گزارشات</a>
+                    </div>
+                    <div class="text-center mt-2 mb-1">
+                        <a class="btn btn-success">ورود به سامانه</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-2-1 col-sm-2-1 card bg-dark-subtle" style="padding: 0; margin: 0;">
+                <img src="{% static 'images/farhangi.jpg' %}" class="card-img-top" style="height: 150px" alt="...">
+                <div class="margin-right-10 margin-left-10">
+                    <h4 class="card-title mt-1">حوزه فرهنگی</h4>
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action active bg-danger border-danger"
+                           aria-current="true">
+                            امکانات موجود
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">ویرایش ژئومتریک اطلاعات مکانی</a>
+                        <a href="#" class="list-group-item list-group-item-action">ویرایش اطلاعات توصیفی</a>
+                        <a href="#" class="list-group-item list-group-item-action">مدیریت دسترسی کاربران</a>
+                        <a class="list-group-item list-group-item-action">مدیریت گزارشات</a>
+                    </div>
+                    <div class="text-center mt-2 mb-1">
+                        <a class="btn btn-danger">ورود به سامانه</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-2-1 col-sm-2-1 card bg-dark-subtle" style="padding: 0; margin: 0;">
+                <img src="{% static 'images/pazhohesh.jpg' %}" class="card-img-top" style="height: 150px" alt="...">
+                <div class="margin-right-10 margin-left-10">
+                    <h4 class="card-title mt-1">حوزه پژوهش</h4>
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action active bg-warning border-warning"
+                           aria-current="true">
+                            امکانات موجود
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">ویرایش ژئومتریک اطلاعات مکانی</a>
+                        <a href="#" class="list-group-item list-group-item-action">ویرایش اطلاعات توصیفی</a>
+                        <a href="#" class="list-group-item list-group-item-action">مدیریت دسترسی کاربران</a>
+                        <a class="list-group-item list-group-item-action">مدیریت گزارشات</a>
+                    </div>
+                    <div class="text-center mt-2 mb-1">
+                        <a class="btn btn-warning">ورود به سامانه</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-2-1 col-sm-2-1 card bg-dark-subtle mt-1" style="padding: 0; margin: 0;">
+                <img src="{% static 'images/setfa.jpg' %}" class="card-img-top" style="height: 150px" alt="...">
+                <div class="margin-right-10 margin-left-10">
+                    <h4 class="card-title mt-1">حوزه ستفا</h4>
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action active bg-info border-info"
+                           aria-current="true">
+                            امکانات موجود
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">ویرایش ژئومتریک اطلاعات مکانی</a>
+                        <a href="#" class="list-group-item list-group-item-action">ویرایش اطلاعات توصیفی</a>
+                        <a href="#" class="list-group-item list-group-item-action">مدیریت دسترسی کاربران</a>
+                        <a class="list-group-item list-group-item-action">مدیریت گزارشات</a>
+                    </div>
+                    <div class="text-center mt-2 mb-1">
+                        <a class="btn btn-info text-white">ورود به سامانه</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-1"></div>
+    </div>
+{% endblock %}
+
+
+{% block script %}
+    <script>
+        var i = 0;
+        var a = 0;
+        var txt = 'سامانه مدیریتی املاک و مستغلات';
+        var txtSpan = 'سامانه webGis مدیریت املاک و مستغلات جهاد دانشگاهی';
+        var speed = 50;
+        var speedSpan = 20;
+
+        function typeWriter() {
+            if (i < txt.length) {
+                document.getElementById("pageTitle").innerHTML += txt.charAt(i);
+                i++;
+                setTimeout(typeWriter, speed);
+            }
+        }
+
+        function typeWriterSpan() {
+            if (a < txtSpan.length) {
+                document.getElementById("pageSpan").innerHTML += txtSpan.charAt(a);
+                a++;
+                setTimeout(typeWriterSpan, speedSpan);
+            }
+        }
+
+        typeWriter();
+
+        setTimeout(function () {
+            typeWriterSpan();
+        }, 1500);
+
+    </script>
+{% endblock %}

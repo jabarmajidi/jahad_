@@ -1,0 +1,45 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صفحه لاگ‌این</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .pageHeader {
+            background-color: mediumslateblue;
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+<div class="login-wrapper text-center">
+    <div class="pageHeader d-flex justify-content-between p-2">
+        <img src="{% static 'images/11.png' %}">
+        <img src="{% static 'images/logo.png' %}" alt="لوگو" class="logo">
+        <img src="{% static 'images/back.png' %}" alt="لوگو" class="logo">
+    </div>
+    <h4 class="my-2">سامانه املاک و مستغلات جهاد دانشگاهی</h4>
+    <div class="login-container text-center" style="background-image: url('{% static "images/10.jpg" %}'); background-size: cover; background-position: center; height: 100vh;">
+    <div class="card mt-2 p-4" style="opacity: 70%; width: 25%; margin: auto; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <h4 class="my-1">ورود به حساب کاربری</h4>
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="mb-3 text-center">
+                <label class="form-label">نام کاربری</label>
+                {{ form.username }}
+            </div>
+            <div class="mb-3 text-center">
+                <label class="form-label">رمز عبور</label>
+                {{ form.password }}
+            </div>
+            <button type="submit" class="btn btn-primary w-100">ورود</button>
+        </form>
+    </div>
+</div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,2688 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block link %}
+    <title>نقشه املاک و مستغلات</title>
+    <link rel="stylesheet" href="{% static 'css/mainMap.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dependencies/persianDate.css' %}">
+    <script src="{% static 'js/dependencies/persianDate.js' %}"></script>
+    <style>
+        .with-border {
+            border: 2px solid #007bff;
+            border-radius: 6px;
+            padding: 10px;
+        }
+    </style>
+    <style>
+        #layersOffCanvas {
+            border-top-right-radius: 15px;
+            border-bottom-right-radius: 15px;
+            overflow: hidden;
+        }
+
+        #map {
+            height: 100%
+        }
+
+        .filtered-column {
+            color: red !important;
+        }
+
+        #printMap {
+            height: 370px;
+            width: 100%;
+            border-radius: 2%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .option {
+            display: inline-block;
+            padding: 10px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        .selected {
+            background-color: green;
+            color: white;
+        }
+
+        .stepper {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .step {
+            padding: 10px;
+            border-left: 3px solid #ccc;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .active-step {
+            border-color: #00e203;
+            background-color: #e9ecef;
+        }
+
+        .content {
+            display: none;
+        }
+
+        .active-content {
+            display: block;
+        }
+
+        @keyframes expandWidth {
+            from {
+                flex-basis: 0;
+            }
+            to {
+                flex-basis: 50%;
+            }
+        }
+
+        @keyframes collapseWidth {
+            from {
+                flex-basis: 50%;
+            }
+            to {
+                flex-basis: 0;
+            }
+        }
+
+        #col3.expanded {
+            animation: expandWidth 1s forwards;
+        }
+
+        #col3.collapsed {
+            animation: collapseWidth 1s forwards;
+            overflow-x: hidden;
+        }
+
+        .pointerCursor {
+            cursor: pointer;
+        }
+
+        .rtl-input {
+            direction: rtl;
+            text-align: right;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* نیمه شفاف */
+            z-index: 1040; /* بالاتر از محتوای معمولی اما پایین‌تر از مدال */
+            backdrop-filter: blur(5px); /* ایجاد افکت تار */
+        }
+
+    </style>
+    <style>
+        .chat-box {
+            position: absolute;
+            bottom: 60px;
+            right: 0;
+            width: 400px;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .chat-box {
+            height: 400px;
+        }
+    </style>
+    {# ---------------------- set scroll bar  #}
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .container1 {
+            display: flex;
+        }
+
+        .column {
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+
+        .resizer {
+            background: #f1f1f1;
+            width: 10px;
+            cursor: col-resize;
+        }
+
+        .d-none {
+            display: none;
+        }
+    </style>
+    <style>
+        .resizable {
+            position: fixed; /* به جای absolute، از fixed استفاده کنید */
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 200px; /* عرض پیش‌فرض */
+            min-width: 150px;
+            max-width: 600px;
+            z-index: 1055; /* برای اولویت در نمایش */
+            background-color: #fff; /* پس‌زمینه */
+            overflow: auto; /* برای محتوای بیش‌ازحد */
+            border-right: 1px solid #ddd;
+        }
+
+        .resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            height: 100%;
+            cursor: ew-resize;
+            background-color: #ccc;
+        }
+
+        #dropdownList {
+            width: 80%;
+            max-width: none;
+            box-sizing: border-box;
+        }
+
+        #dropdownList {
+            max-height: 200px;
+            overflow-y: auto; /* برای اسکرول در صورت زیاد بودن آیتم‌ها */
+        }
+
+        #selectionResults {
+            margin-top: 20px;
+        }
+
+        #selectedFeaturesList {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .filter-condition {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+
+        .remove-condition-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .remove-condition {
+            margin-right: 10px;
+        }
+
+    </style>
+    <style>
+        .offcanvas {
+            z-index: 1055;
+        }
+
+        .table-container {
+            overflow-y: auto;
+        }
+
+        .resize-div {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 10px;
+            background-color: #ccc;
+            cursor: ns-resize;
+            z-index: 1060;
+        }
+
+
+        .table-scroll-top {
+            overflow-x: auto;
+            transform: rotateX(180deg);
+        }
+
+        .table-scroll-top table {
+            transform: rotateX(180deg);
+            width: 100%;
+            white-space: nowrap;
+        }
+    </style>
+    <style>
+        #search-input {
+            position: relative;
+            z-index: 10;
+        }
+
+        #search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .sticky-column {
+            position: sticky;
+            left: 0;
+            background-color: white;
+            z-index: 10;
+        }
+
+
+    </style>
+    <link rel="stylesheet" href="{% static 'css/new/leaflet.draw.css' %}"/>
+    <style>
+        .corner-coordinates {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.85);
+            font-size: 0.7rem;
+            padding: 2px 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            z-index: 1000;
+            color: #000;
+        }
+
+        .top-left {
+            top: 5px;
+            left: 5px;
+        }
+
+        .top-right {
+            top: 5px;
+            right: 5px;
+        }
+
+        .bottom-left {
+            bottom: 5px;
+            left: 5px;
+        }
+
+        .bottom-right {
+            bottom: 20px;
+            right: 5px;
+        }
+
+        #printFrame {
+            border: 3px solid #2c3e50;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background-color: #fdfdfd;
+            width: 100%;
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        .print-frame {
+            border: 3px solid #2c3e50;
+            border-radius: 12px;
+            padding: 5px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 1000px;
+            margin: auto;
+        }
+    </style>
+    <style>
+        .leaflet-draw-draw-polygon::before {
+            content: "🔺";
+            font-size: 16px;
+            display: block;
+            text-align: center;
+            line-height: 30px;
+        }
+
+        .leaflet-draw-draw-rectangle::before {
+            content: "⬛";
+            font-size: 16px;
+            display: block;
+            text-align: center;
+            line-height: 30px;
+        }
+
+        .leaflet-draw-edit-edit::before {
+            content: "✏️"; /* آیکون ویرایش */
+            font-size: 16px;
+            display: block;
+            text-align: center;
+            line-height: 30px;
+        }
+
+        .leaflet-draw-edit-remove::before {
+            content: "🗑️"; /* آیکون حذف */
+            font-size: 16px;
+            display: block;
+            text-align: center;
+            line-height: 30px;
+        }
+
+
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="container1">
+        <div class="column" id="col2" style="flex-basis: 100%">
+            <div id="map"></div>
+        </div>
+        <div class="resizer" id="resizer2"></div>
+        <div class="column p-2 d-none" id="col3" style="flex-basis: 0" dir="rtl">
+        </div>
+    </div>
+
+    <div class="modal text-right" tabindex="-1" id="reportModal" dir="rtl">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="text-center mt-2">
+                    <h4>مشاهده سابقه تغییرات</h4>
+                </div>
+                <div class="row pt-auto p-1">
+                    <div class="col-auto"><span>فیلتر گذاری</span></div>
+                    <div class="col-auto"><input class=" form-control form-control-sm" data-jdp id="firstDate"
+                                                 placeholder="تاریخ شروع فیلتر"></div>
+                    <div class="col-auto"><input class="form-control form-control-sm" data-jdp id="endDate"
+                                                 placeholder="تاریخ انتهای فیلتر"></div>
+                    <div class="col-auto">
+                        <button class="btn btn-success btn-sm text-center" onclick="filterReportDate()">اعمال فیلتر
+                        </button>
+                    </div>
+                </div>
+                <hr>
+                <div class="modal-body">
+                    <table class="table table-striped text-end">
+                        <thead>
+                        <tr>
+                            <th>ردیف</th>
+                            <th style="width: 60px; white-space: nowrap">نام کاربری</th>
+                            <th>کلید</th>
+                            <th>مقدار قبلی</th>
+                            <th>مقدار جدید</th>
+                            <th style="width: 100px">تاریخ</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal text-right" tabindex="-1" id="printModal" dir="rtl">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="card p-2 mx-2 mt-1">
+                    <div class="row p-2">
+                        <div class="col-5">
+                            <label class="form-label">عنوان</label>
+                            <input id="printMapTitleInput" class="form-control form-control-sm" type="text"
+                                   placeholder="عنوان را وارد کنید">
+                        </div>
+                        <div class="col-5">
+                            <label class="form-label">توضیحات</label>
+                            <input id="printMapDescriptionInput" class="form-control form-control-sm" type="text"
+                                   placeholder="توضیحات مختصر">
+                        </div>
+                        <div class="col-2">
+                            <div class="btn-group" role="group">
+                                <button style="margin-top: 30px" type="button"
+                                        class="btn btn-sm btn-primary dropdown-toggle"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"> چاپ نقشه
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item text-black text-right pointerCursor"
+                                           onclick="printMapToPNG()">خروجی با فرمت jpg</a>
+                                    </li>
+                                    </li>
+                                    {#                                    <li><a class="dropdown-item text-black text-right pointerCursor"#}
+                                    {#                                           onclick="printMapToPDF()">خروجی با فرمت pdf</a>#}
+                                    {#                                    </li>#}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-start">
+                        <div class="mt-2" style="width: 200px; margin-right: 10px">
+                            <div class="mb-3" id="searchDataPrintDiv"></div>
+                        </div>
+                        <div class="d-flex" id="selectedKey"></div>
+                    </div>
+                </div>
+                <div id="mainMapPrintDiv">
+                    <div class="print-frame mt-1 mb-1">
+                        <div class="d-flex justify-content-between">
+                            <div class="text-center">
+                                <h6 id="printMapTitle">عنوان نقشه</h6>
+                                <span id="printMapSpan">توضیحات نقشه</span>
+                            </div>
+                            <div id="newMapDetail" class="with-border"></div>
+                        </div>
+                        <div class="d-flex justify-content-center">
+                            <div id="printMap" style="position: relative;">
+                                <div class="corner-coordinates top-left" id="coord-nw"></div>
+                                <div class="corner-coordinates top-right" id="coord-ne"></div>
+                                <div class="corner-coordinates bottom-left" id="coord-sw"></div>
+                                <div class="corner-coordinates bottom-right" id="coord-se"></div>
+                            </div>
+
+                        </div>
+                        <div class="d-flex justify-content-center align-items-center mt-2">
+                            <div class="d-flex justify-content-between w-75">
+                                <div class="d-flex align-items-center justify-content-between w-75">
+                                    <div class="d-flex align-items-center">
+                                        <img src="{% static 'images/svg/north.svg' %}" alt="آیکون شمال"
+                                             style="width: 20px; height: 20px;">
+                                        <span>مقیاس نقشه:</span>
+                                        <span id="mapPrintZoom" class="ms-2">1:50000</span>
+                                    </div>
+                                </div>
+                                <div id="titleDiv"></div>
+                            </div>
+                        </div>
+                        <div class="mt-2">.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade text-right" id="selectByAttributeModal" dir="rtl" tabindex="-1"
+         aria-labelledby="selectByAttributeModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="selectByAttributeModalLabel">انتخاب بر اساس ویژگی</h5>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label" for="newLayerName">نام فایل جدید را وارد کنید</label>
+                    <input id="newLayerName" type="text" class="form-control-sm form-control mb-2">
+
+                    <div id="filterConditions">
+                        <div class="filter-condition">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-2">
+                                    <label for="attributeField_0" class="form-label">فیلد:</label>
+                                    <select class="form-select form-select-sm attributeField" id="attributeField_0">
+                                        <option value="">انتخاب فیلد</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="comparisonOperator_0" class="form-label">عملگر:</label>
+                                    <select class="form-select form-select-sm comparisonOperator"
+                                            id="comparisonOperator_0">
+                                        <option value="equals">برابر است با</option>
+                                        <option value="notEquals">نابرابر است با</option>
+                                        <option value="greaterThan">بزرگتر از</option>
+                                        <option value="lessThan">کوچکتر از</option>
+                                        <option value="contains">شامل می‌شود</option>
+                                        <option value="startsWith">شروع می‌شود با</option>
+                                        <option value="endsWith">تمام می‌شود با</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="attributeValue_0" class="form-label">مقدار:</label>
+                                    <div class="input-group" dir="ltr">
+                                        <button class="btn btn-sm btn-secondary dropdown-toggle" type="button"
+                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                            انتخاب
+                                        </button>
+                                        <ul style="max-height: 300px; overflow-y: auto;"
+                                            class="dropdown-menu dropdown-menu-end text-end" id="allNewValueToSelect_0">
+                                        </ul>
+                                        <input type="text" class="form-control form-select-sm attributeValue"
+                                               id="attributeValue_0"
+                                               placeholder="متن جستجو...">
+                                    </div>
+                                </div>
+                                <div class="col-md-2 mt-4 d-flex align-items-end justify-content-end">
+                                    <button type="button" class="btn btn-sm btn-danger remove-condition"
+                                            style="display:none;">
+                                        حذف
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-sm btn-success mt-2" id="addFilterCondition">افزودن شرط
+                    </button>
+
+                    <div class="alert alert-info mt-3 p-2">
+                        <strong>نکته:</strong> برای هر شرط جدید می‌توانید ترکیب منطقی (و / یا) با شرط قبلی را انتخاب
+                        کنید.
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+                    <button type="button" class="btn btn-primary" id="applySelection">اعمال انتخاب</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addNewFeatureModal" dir="rtl" tabindex="-1" aria-labelledby="addNewFeatureModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addNewFeatureModalLabel">افزودن ملک جدید</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="coordinatesForm">
+                        {% csrf_token %}
+                        <div id="polygonPointsInput">
+                            <div class="row g-2 align-items-center mb-3 point-row">
+                                <div class="col">
+                                    <input type="number" class="form-control form-control-sm longitude-input"
+                                           value="46.22" placeholder="X (طول)" name="x[]">
+                                </div>
+                                <div class="col">
+                                    <input type="number" class="form-control form-control-sm latitude-input"
+                                           value="36.27" placeholder="Y (عرض)" name="y[]">
+                                </div>
+                                <div class="col-auto">
+                                    <button type="button" class="btn btn-danger btn-sm remove-point">حذف</button>
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-3 point-row">
+                                <div class="col">
+                                    <input type="number" class="form-control form-control-sm longitude-input"
+                                           value="46.16" placeholder="X (طول)" name="x[]">
+                                </div>
+                                <div class="col">
+                                    <input type="number" class="form-control form-control-sm latitude-input"
+                                           value="36.32" placeholder="Y (عرض)" name="y[]">
+                                </div>
+                                <div class="col-auto">
+                                    <button type="button" class="btn btn-danger btn-sm remove-point">حذف</button>
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-3 point-row">
+                                <div class="col">
+                                    <input type="number" class="form-control form-control-sm longitude-input"
+                                           value="46.35" placeholder="X (طول)" name="x[]">
+                                </div>
+                                <div class="col">
+                                    <input type="number" class="form-control form-control-sm latitude-input"
+                                           value="36.36" placeholder="Y (عرض)" name="y[]">
+                                </div>
+                                <div class="col-auto">
+                                    <button type="button" class="btn btn-danger btn-sm remove-point">حذف</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                    <button type="button" class="btn btn-success btn-sm" id="addPoint">افزودن نقطه جدید</button>
+                    <hr>
+                    <form id="allNewFileForm">
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tmelk" name="tmelk"
+                                       placeholder="نوع ملک">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="plan" name="plan"
+                                       placeholder="پلان">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="vahed" name="vahed"
+                                       placeholder="واحد">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="malek" name="malek"
+                                       placeholder="مالک">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="onvan" name="onvan"
+                                       placeholder="عنوان">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sakhtar" name="sakhtar"
+                                       placeholder="ساختار">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="faliat" name="faliat"
+                                       placeholder="نوع فعالیت">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="karbari" name="karbari"
+                                       placeholder="صنعتی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="vaziat" name="vaziat"
+                                       placeholder="وضعیت">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ostan" name="ostan"
+                                       placeholder="استان">
+                            </div>
+                            <div class="col-md-6">
+                            <textarea class="form-control form-control-sm" id="adres" name="adres" rows="1"
+                                      placeholder="آدرس"></textarea>
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="plak" name="plak"
+                                       placeholder="مشخصات پلاک ثبتی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="malekiat" name="malekiat"
+                                       placeholder="وضعیت مالکیت">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tejare" name="tejare"
+                                       placeholder="تاریخ اجاره">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="dejare" name="dejare"
+                                       placeholder="مبلغ دریافت اجاره">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ttamalok" name="ttamalok"
+                                       placeholder="تاریخ مالکیت">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="pejare" name="pejare"
+                                       placeholder="مبلغ اجاره">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="ghimat_mlk"
+                                       name="ghimat_mlk"
+                                       placeholder="قیمت تقریبی ملک">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="moarez" name="moarez"
+                                       placeholder="معارض">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-12">
+                            <textarea class="form-control form-control-sm" id="tmoarez" name="tmoarez" rows="1"
+                                      placeholder="توضیحات معارض"></textarea>
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="madarek" name="madarek"
+                                       placeholder="مدارک موجود">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_bime" name="ty_bime"
+                                       placeholder="نوع بیمه">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="nam_bime" name="nam_bime"
+                                       placeholder="شرکت بیمه">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sho_bime" name="sho_bime"
+                                       placeholder="شماره بیمه">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="dt_ex_bime"
+                                       name="dt_ex_bime"
+                                       placeholder="تاریخ انقضا بیمه">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sh_paynkar"
+                                       name="sh_paynkar"
+                                       placeholder="شماره گواهی اتمام عملیات ساختمانی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tpaynkar" name="tpaynkar"
+                                       placeholder="تاریخ پایان کار">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="salsakht" name="salsakht"
+                                       placeholder="سال ساخت">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="salbana" name="salbana"
+                                       placeholder="قدمت بنا">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="tarakom" name="tarakom"
+                                       placeholder="درصد تراکم ساختمانی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="sathesh" name="sathesh"
+                                       placeholder="سطح اشغال">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="sarane" name="sarane"
+                                       placeholder="سرانه نفر در متر مربع">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="typeskelet"
+                                       name="typeskelet"
+                                       placeholder="نوع اسکلت">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="arse" name="arse"
+                                       placeholder="عرصه">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="aeian" name="aeian"
+                                       placeholder="اعیان">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="msetadi" name="msetadi"
+                                       placeholder="متراژ ستادی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="mamozeshi"
+                                       name="mamozeshi"
+                                       placeholder="متراژ آموزشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="melmikar" name="melmikar"
+                                       placeholder="متراژ آموزش علمی کاربردی">
+                            </div>
+                            <div class="col-md-6">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="ma_ali" name="ma_ali"
+                                       placeholder="متراژ آموزش عالی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="ma_kotah" name="ma_kotah"
+                                       placeholder="متراژ آموزش کوتاه مدت">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_kar_a" name="m_kar_a"
+                                       placeholder="متراژ کارگاه آموزشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_az_am" name="m_az_am"
+                                       placeholder="متراژ آزمایشگاه آموزشی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_pazho" name="m_pazho"
+                                       placeholder="متراژ پژوهشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_darm_p" name="m_darm_p"
+                                       placeholder="متراژ درمانی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_groh_p" name="m_groh_p"
+                                       placeholder="متراژ گروه پژوهشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_mkhtakh"
+                                       name="m_mkhtakh"
+                                       placeholder="متراژ مرکز خدمات تخصصی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_kar_p" name="m_kar_p"
+                                       placeholder="متراژ کارگاه پژوهشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_azma_p" name="m_azma_p"
+                                       placeholder="متراژ از آزمایشگاه پژوهشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_farangi"
+                                       name="m_farangi"
+                                       placeholder="متراژ فرهنگی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_eshtegh"
+                                       name="m_eshtegh"
+                                       placeholder="متراژ اشتغال و تجاری سازی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_varzesh"
+                                       name="m_varzesh"
+                                       placeholder="متراژ ورزشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_eghamati"
+                                       name="m_eghamati"
+                                       placeholder="متراژ اقامتی (رفاهی)">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_refahi" name="m_refahi"
+                                       placeholder="متراژ رفاهی و رستوران">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_anbari" name="m_anbari"
+                                       placeholder="متراژ انباری و موتور خانه">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_moshaat"
+                                       name="m_moshaat"
+                                       placeholder="متراژ راه پله و مشاعات">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_park" name="m_park"
+                                       placeholder="متراژ پارکینگ">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_tasisat"
+                                       name="m_tasisat"
+                                       placeholder="متراژ تاسیسات">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="m_golkhane"
+                                       name="m_golkhane"
+                                       placeholder="متراژ گلخانه">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="t_tabagh" name="t_tabagh"
+                                       placeholder="تعداد طبقات ساختمان">
+                            </div>
+                            <div class="col-md-9">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_chah" name="te_chah"
+                                       placeholder="تعداد چاه">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_cha_lai"
+                                       name="te_cha_lai"
+                                       placeholder="تعداد چاه لایه روبی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_setad" name="tab_setad"
+                                       placeholder="طبقات ستادی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_amoz" name="tab_amoz"
+                                       placeholder="طبقات آموزشی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_am_ali"
+                                       name="tab_am_ali"
+                                       placeholder="طبقات آموزش عالی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_elmi" name="tab_elmi"
+                                       placeholder="طبقات آموزش علمی کاربردی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_am_kot"
+                                       name="tab_am_kot"
+                                       placeholder="طبقات آموزش کوتاه مدت">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_kar_am"
+                                       name="tab_kar_am"
+                                       placeholder="طبقات کارگاه آموزشی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_az_amo"
+                                       name="tab_az_amo"
+                                       placeholder="طبقات آزمایشگاه آموزشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_pazh" name="tab_pazh"
+                                       placeholder="طبقات پژوهشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_darm" name="tab_darm"
+                                       placeholder="طبقات درمانی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_gro_pa"
+                                       name="tab_gro_pa"
+                                       placeholder="طبقات گروه پژوهشی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_mkhd_t"
+                                       name="tab_mkhd_t"
+                                       placeholder="طبقات مرکز خدمات تخصصی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_az_pa" name="tab_az_pa"
+                                       placeholder="طبقات آزمایشگاه پژوهشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_kar_pa"
+                                       name="tab_kar_pa"
+                                       placeholder="طبقات کارگاه پژوهشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_farang"
+                                       name="tab_farang"
+                                       placeholder="طبقات فرهنگی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_eshteg"
+                                       name="tab_eshteg"
+                                       placeholder="طبقات اشتغال و تجاری سازی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_var" name="tab_var"
+                                       placeholder="طبقات ورزشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_egh" name="tab_egh"
+                                       placeholder="طبقات اقامتی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_refah" name="tab_refah"
+                                       placeholder="طبقات رفاهی و رستوران">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_anbar" name="tab_anbar"
+                                       placeholder="طبقات انباری">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_mosh" name="tab_mosh"
+                                       placeholder="راه پله و مشاعات">
+                            </div>
+                            <div class="col-md-6">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_park" name="tab_park"
+                                       placeholder="طبقات پارکینگ">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tab_tasis" name="tab_tasis"
+                                       placeholder="طبقات تاسیسات">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_masale" name="ty_masale"
+                                       placeholder="نوع مصالح">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="mas_div_ot"
+                                       name="mas_div_ot"
+                                       placeholder="مصالح مصرفی دیوارهای خارجی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="mas_div_in"
+                                       name="mas_div_in"
+                                       placeholder="مصالح مصرفی دیوارهای داخلی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="nama_ot" name="nama_ot"
+                                       placeholder="نماهای خارجی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="posh_bam" name="posh_bam"
+                                       placeholder="پوشش نهایی بام">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="pangere" name="pangere"
+                                       placeholder="پنجر ها">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="kafrah" name="kafrah"
+                                       placeholder="کف راه پله">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_shishe" name="ty_shishe"
+                                       placeholder="نوع شیشه">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="aigh_rdi_o"
+                                       name="aigh_rdi_o"
+                                       placeholder="عایق رطوبتی دیوارهای خارجی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="aigh_h_kaf"
+                                       name="aigh_h_kaf"
+                                       placeholder="عایق حرارتی کف">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="aigh_h_sag"
+                                       name="aigh_h_sag"
+                                       placeholder="عایق حرارتی سقف">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="aigh_hdi_o"
+                                       name="aigh_hdi_o"
+                                       placeholder="عایق حرارتی دیوارههای خارجی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sys_tabgh" name="sys_tabgh"
+                                       placeholder="سیستم دسترسی به طبقات">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_khak" name="ty_khak"
+                                       placeholder="نوع خاک">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_pay" name="ty_pay"
+                                       placeholder="نوع پی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_saghf" name="ty_saghf"
+                                       placeholder="نوع سقف">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="di_saghf" name="di_saghf"
+                                       placeholder="دیوار حائل زیر سقف">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_lol_ab" name="ty_lol_ab"
+                                       placeholder="نوع لوله مصرفی آب">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_lol_faz"
+                                       name="ty_lol_faz"
+                                       placeholder="نوع لوله مصرفی فاضلاب">
+                            </div>
+                            <div class="col-md-9">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_lol_gs" name="ty_lol_gs"
+                                       placeholder="نوع لوله مصرفی گرمایش و سرمایش">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_lol_gaz"
+                                       name="ty_lol_gaz"
+                                       placeholder="نوع لوله مصرفی گاز">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_sokht" name="ty_sokht"
+                                       placeholder="نوع سوخت مصرفی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sys_grm" name="sys_grm"
+                                       placeholder="سیستم گرمایشی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sys_sarma" name="sys_sarma"
+                                       placeholder="سیستم سرمایش">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sys_entg_d"
+                                       name="sys_entg_d"
+                                       placeholder="سیستم انتقال گرما و سرما">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sys_daf_fa"
+                                       name="sys_daf_fa"
+                                       placeholder="سیستم دفع فاضلاب">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sys_atash" name="sys_atash"
+                                       placeholder="سیستم آتشنشانی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_riz_ats"
+                                       name="ty_riz_ats"
+                                       placeholder="نوع رایز سیستم آتشنشانی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="dak_servis"
+                                       name="dak_servis"
+                                       placeholder="داکت قابل سرویس">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sy_con_tas"
+                                       name="sy_con_tas"
+                                       placeholder="سیستم هوشمند کنترل تاسیسات">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="makh_abats"
+                                       name="makh_abats"
+                                       placeholder="مغزن آب جهت سیستم آتشنشانی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="taj_atsh" name="taj_atsh"
+                                       placeholder="تجهیزات ارتفاع">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ser_dore" name="ser_dore"
+                                       placeholder="سرویس دوره ای">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="dt_ser_dor"
+                                       name="dt_ser_dor"
+                                       placeholder="تاریخ سرویس دوره ای">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="egzast" name="egzast"
+                                       placeholder="سیستم اگزاست">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_asan" name="ty_asan"
+                                       placeholder="نوع آسانسو">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_asan" name="te_asan"
+                                       placeholder="تعداد آسانسور">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="zarf_asan" name="zarf_asan"
+                                       placeholder="ظرفیت آسانسور">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tasis_jan" name="tasis_jan"
+                                       placeholder="تاسیسات جانبی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="lole_goz" name="lole_goz"
+                                       placeholder="لوله گذاری">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_roshan" name="ty_roshan"
+                                       placeholder="مشخصات سیستم روشنایی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="madar_brgh"
+                                       name="madar_brgh"
+                                       placeholder="مدار روشنایی و پریز">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sys_erth" name="sys_erth"
+                                       placeholder="سیستم اتصال زمین">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sy_elam_ha"
+                                       name="sy_elam_ha"
+                                       placeholder="سیستم اعلام حریق">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sys_darb" name="sys_darb"
+                                       placeholder="سیستم بازشو درب ماشین">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sys_tel" name="sys_tel"
+                                       placeholder="سیستم تلفن">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sys_ups" name="sys_ups"
+                                       placeholder="سیستم برق اضطراری">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="tavan_ups" name="tavan_ups"
+                                       placeholder="قدرت سیستم برق اضطراریی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sh_esh_ab" name="sh_esh_ab"
+                                       placeholder="شماره اشتراک آب">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sh_esh_brg"
+                                       name="sh_esh_brg"
+                                       placeholder="شماره اشتراک برق">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sh_esh_gaz"
+                                       name="sh_esh_gaz"
+                                       placeholder="شماره اشتراک گاز">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_con_ab" name="ty_con_ab"
+                                       placeholder="نوع کنتور آب">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="zar_con_ab"
+                                       name="zar_con_ab"
+                                       placeholder="ظرفیت کنتور آب">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_con_brg"
+                                       name="ty_con_brg"
+                                       placeholder="نوع کنتور برقه">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="zr_con_brg"
+                                       name="zr_con_brg"
+                                       placeholder="ظرفیت کنتور برق">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="ty_con_gaz"
+                                       name="ty_con_gaz"
+                                       placeholder="نوع کنتور گاز">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="zr_con_gaz"
+                                       name="zr_con_gaz"
+                                       placeholder="ظرفیت کنتور گاز">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="taj_sakht" name="taj_sakht"
+                                       placeholder="تجهیزات ساختمان">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_chiler"
+                                       name="te_chiler"
+                                       placeholder="تعداد چیر">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_brj_srd"
+                                       name="te_brj_srd"
+                                       placeholder="تعداد برج خنک کننده">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_col_ab"
+                                       name="te_col_ab"
+                                       placeholder="تعداد کولر آبی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_col_gaz"
+                                       name="te_col_gaz"
+                                       placeholder="تعداد کولر گازی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_boilr" name="te_boilr"
+                                       placeholder="تعداد بویلر">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_bokhari"
+                                       name="te_bokhari"
+                                       placeholder="تعداد بخاری">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_shomine"
+                                       name="te_shomine"
+                                       placeholder="تعداد شومینه گازی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_pakig" name="te_pakig"
+                                       placeholder="تعداد پکیج">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_skht_ab"
+                                       name="te_skht_ab"
+                                       placeholder="تعداد سختی گیر">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_pomp_ab"
+                                       name="te_pomp_ab"
+                                       placeholder="تعداد پمپ آبرسانی">
+                            </div>
+                            <div class="col-md-9">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_radiato"
+                                       name="te_radiato"
+                                       placeholder="تعداد رادیاتور">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_fan_col"
+                                       name="te_fan_col"
+                                       placeholder="تعداد فن کوئل">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_makh_at"
+                                       name="te_makh_at"
+                                       placeholder="تعداد مخازن ذخیره آب آتشنشانی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_makh_ab"
+                                       name="te_makh_ab"
+                                       placeholder="تعداد مخازن ذخیره آب">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_zhnratr"
+                                       name="te_zhnratr"
+                                       placeholder="تعداد ژنراتور اضطراری">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_dzlatsh"
+                                       name="te_dzlatsh"
+                                       placeholder="تعداد دیزل پمپ آتشنشانی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_pak_col"
+                                       name="te_pak_col"
+                                       placeholder="تعداد پکیج هوایی سرمایشی">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_hava_sz"
+                                       name="te_hava_sz"
+                                       placeholder="تعداد هواساز">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_manb_ab"
+                                       name="te_manb_ab"
+                                       placeholder=" تعداد منابع آب گرم">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_otg_srv"
+                                       name="te_otg_srv"
+                                       placeholder="تعداد اتاق سرور">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control form-control-sm" id="te_otg_tel"
+                                       name="te_otg_tel"
+                                       placeholder="تعداد اتاق مرکز تلفن">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="marker" name="marker"
+                                       placeholder="کد پستی">
+                            </div>
+                        </div>
+                        <div class="row mb-1">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="sardar" name="sardar"
+                                       placeholder="لینک سردر">
+                            </div>
+                            <div class="col-md-9">
+                                <input type="text" class="form-control form-control-sm" id="mostanadat"
+                                       name="mostanadat"
+                                       placeholder="مستندات">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+                    <button class="btn btn-success"
+                            onclick="addNewFeature()">ذخیره
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="renameLayer" dir="rtl" tabindex="-1" aria-labelledby="renameLayerLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="renameLayerLabel">تغییر نام لایه</h5>
+                </div>
+                <div class="modal-body" id="renameModalBody">
+
+                </div>
+                <div class="modal-footer">
+                    <div id="renameModalFooter"></div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="ClassifyModal" dir="rtl" tabindex="-1" aria-labelledby="ClassifyModalModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header justify-content-between align-items-center">
+                    <h5 class="modal-title" id="documentsModalLabel">دسته بندی املاک</h5>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">✖</button>
+                </div>
+                <div class="modal-body">
+                    <div>
+                        <label for="classifyField">انتخاب فیلد برای دسته‌بندی:</label>
+                        <select class="form-control" id="classifyField">
+                            <option value="arse">عرصه</option>
+                            <option value="aeian">اعیان</option>
+                            <option value="salbana">قدمت بنا</option>
+                        </select>
+                    </div>
+                    <div id="categoryRanges">
+                        <label>تعریف بازه‌های دسته‌بندی برای فیلد <span id="selectedFieldName"></span>:</label>
+                        <div class="input-group mb-2">
+                            <input type="number" class="form-control" placeholder="از">
+                            <div class="input-group-prepend mx-1">
+                                <span class="input-group-text">تا</span>
+                            </div>
+                            <input type="number" class="form-control" placeholder="تا">
+                            <div class="input-group-append">
+                                <button class="btn btn-success add-range" type="button">+</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary mt-3" id="classifyButton">دسته‌بندی</button>
+                    <div id="classificationResults" class="mt-3">
+                    </div>
+                    <div id="mainCanvasDiv" class="card p-2 m-2">
+                        <canvas id="classificationChart"
+                                style="display: none; max-width: 100%; width: 100%; height: auto;"></canvas>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-info" id="showChartButton">نمایش نمودار</button>
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">بستن</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="documentsModal" dir="rtl" tabindex="-1" aria-labelledby="documentsModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header justify-content-between align-items-center">
+                    <h5 class="modal-title" id="documentsModalLabel">همه مستندات</h5>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">✖</button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="docSearch" class="form-control mb-3" placeholder="جستجو در مستندات...">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover text-center" id="docTable">
+                            <thead class="table-light">
+                            <tr>
+                                <th>ردیف</th>
+                                <th>نام مستند</th>
+                                <th>عنوان</th>
+                                <th>واحد</th>
+                                <th>تاریخ</th>
+                                <th>آپلودکننده</th>
+                                <th>دانلود</th>
+                            </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="mainDocumentModal" dir="rtl" tabindex="-1" aria-labelledby="mainDocumentModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header justify-content-between align-items-center">
+                    <h5 class="modal-title" id="mainDocumentModalLabel">همه واحدها</h5>
+                    <button type="button" class="btn btn-danger" id="closeMainDocumentModal" data-bs-dismiss="modal">✖
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="searchInput" placeholder="جستجو در جدول...">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover text-center" id="unitTable">
+                            <thead class="table-light">
+                            <tr>
+                                <th>ردیف</th>
+                                <th>نام واحد</th>
+                                <th>استان</th>
+                                <th>نمایش</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for vahed in vahedNames %}
+                                <tr class="text-right">
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ vahed.name }}</td>
+                                    <td>{{ vahed.ostan }}</td>
+                                    <td><a class="pointerCursor"
+                                           onclick="searchDocuments('{{ vahed.name }}', '{{ vahed.ostan }}')">نمایش
+                                        همه</a></td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="CommentModal" dir="rtl" tabindex="-1"
+         aria-labelledby="CommentModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header justify-content-between align-items-center">
+                    <h5 class="modal-title" id="searchedDocumentsModalLabel">کامنت ثبت شده</h5>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">✖</button>
+                </div>
+                <div class="modal-body">
+                    <h5>یادداشت عمومی</h5>
+                    <div id="commentModalBody"></div>
+                    <div id="commentModalFooter"></div>
+                    <h5 class="mt-2">یادداشت شخصی</h5>
+                    <div id="OwnerCommentModalBody"></div>
+                    <div id="ownerCommentModalFooter"></div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">بستن</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="searchDocumentsModal" dir="rtl" tabindex="-1"
+         aria-labelledby="searchDocumentsModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header justify-content-between align-items-center">
+                    <h5 class="modal-title" id="searchedDocumentsModalLabel">همه مستندات</h5>
+                    <div class="d-flex">
+                        <button type="button" class="btn btn-success" data-bs-toggle="modal"
+                                data-bs-target="#uploadDocumentModal">سند جدید
+                        </button>
+                        <button type="button" class="btn btn-danger" style="margin-right: 5px" data-bs-dismiss="modal">
+                            ✖
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th scope="col">شماره</th>
+                            <th scope="col">نام فایل</th>
+                            <th scope="col">نام واحد</th>
+                            <th scope="col">عنوان</th>
+                            <th scope="col">کاربر</th>
+                            <th scope="col">تاریخ بارگذاری</th>
+                            <th scope="col">نمایش</th>
+                        </tr>
+                        </thead>
+                        <tbody id="searchDocumentTableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="documentsDetailModal" dir="rtl" tabindex="-1"
+         aria-labelledby="documentsDetailModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header justify-content-between align-items-center">
+                    <h5 class="modal-title" id="documentsDetailModalLabel">جزئیات مستندات</h5>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">✖</button>
+                </div>
+                <div class="modal-body">
+                    <div class="card">
+                        <div class="card-header" id="documentDetailHeader">
+                        </div>
+                        <div class="card-body" id="documentDetailBody">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+                    <a id="downloadDcoumentId" class="btn btn-success">دانلود فایل</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="offcanvas offcanvas-start resizable" data-bs-backdrop="false" tabindex="-1" id="rightOffCanvas"
+         aria-labelledby="offcanvasExampleLabel">
+        <div class="d-flex justify-content-between p-3">
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            <h5 class="offcanvas-title" id="leftCanvasHeader"></h5>
+        </div>
+        <div class="mt-1" id="leftCanvasBody" dir="rtl">
+        </div>
+        <div class="resizer"></div>
+    </div>
+
+    <div class="offcanvas offcanvas-start" data-bs-backdrop="false" style="width: 300px" tabindex="-1"
+         id="layersOffCanvas"
+         aria-labelledby="layersOffCanvas">
+        <div class="d-flex justify-content-between p-3">
+            <button id="closeLayerButton" type="button" class="btn-close" data-bs-dismiss="offcanvas"
+                    aria-label="Close"></button>
+            <h5 class="offcanvas-title" id="layersCanvasHeader"></h5>
+        </div>
+        <div class="mt-1" id="layersCanvasBody" dir="rtl">
+        </div>
+    </div>
+
+    <div class="offcanvas offcanvas-bottom" data-bs-backdrop="false" tabindex="-1" id="attributeTableOffCanvas"
+         style="height: 300px;"
+         aria-labelledby="attributeTableOffCanvasLabel" data-bs-target="#staticBackdrop" aria-controls="staticBackdrop">
+        <div class="resize-div" style="background-color: transparent; cursor: ns-resize;"></div>
+        <div class="d-flex px-3">
+            <button type="button" class="btn-close me-auto" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            <h5 id="attributeTableOffCanvasLabel">جدول توصیفی</h5>
+        </div>
+        <div class="d-flex justify-content-between align-items-center px-3 mb-1" dir="rtl">
+            <div class="col-md-4 text-end">
+                <div class="input-group">
+                    <input type="text" id="searchInput" class="form-control form-control-sm rounded"
+                           placeholder="عبارت مورد نظر را جستجو کنید...">
+                    <button id="prevBtn" class="btn btn-sm btn-warning rounded">قبلی</button>
+                    <button id="nextBtn" class="btn btn-sm btn-primary rounded">بعدی</button>
+                </div>
+            </div>
+            <div class="col-md-4 d-flex text-start justify-content-end">
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" id="columnDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        ستون‌ها را انتخاب کنید
+                    </button>
+                    <div class="dropdown-menu p-3" style="max-height: 300px; overflow-y: auto;"
+                         aria-labelledby="columnDropdown">
+                        <input type="text" id="dropdownSearch" class="form-control form-control-sm mb-3"
+                               placeholder="جستجو کنید...">
+                        <ul id="columnsMenu" class="list-unstyled">
+                        </ul>
+                    </div>
+                </div>
+                <button id="exportToExcel" class="btn btn-sm btn-success mx-1">خروجی اکسل</button>
+                <button id="showFilterInMap" class="btn btn-sm btn-primary">نمایش در نقشه</button>
+            </div>
+        </div>
+        <div id="activeFiltersContainer" class="px-2" style="margin-bottom: 10px;
+         display: flex; flex-wrap: wrap; gap: 10px;"></div>
+        <div class="offcanvas-body py-0 mt-0" dir="rtl">
+            <table class="table table-bordered table-hover table-wrapper">
+                <thead id="geojson-table-head" class="table-dark sticky-top" style="z-index: 1">
+                </thead>
+                <tbody id="geojson-table-body">
+                </tbody>
+            </table>
+            <div class="text-center mt-2">
+                <button id="loadMoreBtn" class="btn btn-primary">بارگزاری بیشتر</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" dir="rtl" id="uploadDocumentModal" tabindex="-1" aria-labelledby="uploadDocumentModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header d-flex justify-content-between">
+                    <h5 class="modal-title" id="uploadDocumentModalLabel">آپلود فایل جدید</h5>
+                    <button type="button" id="closeUploadDocument" class="btn-close" data-bs-dismiss="modal"
+                            aria-label="بستن"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="uploadForm">
+                        <div class="mb-3">
+                            <label for="fileTitle" class="form-label">عنوان فایل</label>
+                            <input type="text" class="form-control" id="fileTitle" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="fileInput" class="form-label">انتخاب فایل</label>
+                            <input class="form-control" type="file" id="fileInput" name="file"
+                                   accept=".jpg,.jpeg,.png,.pdf,.zip" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+                    <button type="submit" class="btn btn-success" onclick="uploadDocument()">آپلود</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" dir="rtl" id="approveChangeModal" tabindex="-1" aria-labelledby="approveChangeModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header d-flex justify-content-between">
+                    <h5 class="modal-title" id="uploadDocumentModalLabel">تایید اطلاعات ویرایش شده</h5>
+                    <button type="button" id="closeUploadDocument" class="btn-close" data-bs-dismiss="modal"
+                            aria-label="بستن"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th style="width: 7%">استان</th>
+                            <th style="width: 10%" scope="col">واحد</th>
+                            <th scope="col">عنوان</th>
+                            <th scope="col">کلید</th>
+                            <th scope="col">مقدار قبلی</th>
+                            <th scope="col">مقدار جدید</th>
+                            <th scope="col">گزینه ها</th>
+                        </tr>
+                        </thead>
+                        <tbody id="changeTableBody">
+                        {% for change in update %}
+                            <tr id="changeTr{{ change.id }}">
+                            <th scope="row">{{ forloop.counter }}</th>
+                            <td>{{ change.ostan }}</td>
+                            <td>{{ change.vahed }}</td>
+                            <td>{{ change.onvan }}</td>
+                            <td>{{ change.persian_key }}</td>
+                            <td>{{ change.old_value }}</td>
+                            <td>{{ change.new_value }}</td>
+                            <td>
+                                <div class="d-flex">
+                                    <img width="20px" src="{% static 'images/new/190411.png' %}"
+                                         alt="تایید" title="تایید اطلاعات" class="pointerCursor me-2"
+                                         onclick="approveUpdate({{ change.id }})">
+                                    <img width="20px" src="{% static 'images/new/1214428.png' %}"
+                                         alt="حذف" title="حذف اطلاعات" class="pointerCursor mx-1"
+                                         onclick="deleteUpdate({{ change.id }})">
+                                </div>
+                            </td>
+                        {% endfor %}
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="exportPDF"></div>
+{% endblock %}
+
+{% block script %}
+    <script src="{% static 'js/new/Leaflet.Editable.js' %}"></script>
+    <script src="{% static 'js/new/chartjs-plugin-zoom.js' %}"></script>
+    <script>
+        function deleteUpdate(updateId) {
+            Swal.fire({
+                title: "از حذف این تغییر مطمعن هستید؟",
+                showDenyButton: true,
+                showCancelButton: false,
+                confirmButtonText: "حذف",
+                denyButtonText: `لغو`
+            }).then((result) => {
+                showLoadingAlert("درحال حذف تغییر")
+                setTimeout(function () {
+                    const formData = new FormData();
+                    formData.append('updateId', updateId)
+                    $.ajax({
+                        type: "post",
+                        headers: {
+                            'X-CSRFToken': csrftoken,
+                        },
+                        url: "/delete-change",
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function (data) {
+                            Swal.close()
+                            if (data.check) {
+                                var tbody = document.getElementById('changeTableBody');
+                                var tr = document.getElementById('changeTr' + updateId);
+                                tbody.removeChild(tr)
+                                showTimerGreenAlert("تغییر انتخاب شده حذف شد", 2000)
+                            } else {
+                                showTimerRedAlert('ثبت اطلاعات با خطا همراه بود', 2000);
+                            }
+                        },
+                        error: function () {
+                            showTimerRedAlert("حذف اطلاعات با خطا همراه بود", 2000);
+                        }
+                    });
+                }, 500);
+            });
+        }
+
+        function approveUpdate(updateId) {
+            Swal.fire({
+                title: "با تایید این گزینه اطلاعات جدید جایگزین اطلاعات قبلی خواهد شد",
+                showDenyButton: true,
+                showCancelButton: false,
+                confirmButtonText: "ویرایش اطلاعات",
+                denyButtonText: `لغو`
+            }).then((result) => {
+                showLoadingAlert("درحال ویرایش اطلاعات")
+                setTimeout(function () {
+                    const formData = new FormData();
+                    formData.append('updateId', updateId)
+                    $.ajax({
+                        type: "post",
+                        headers: {
+                            'X-CSRFToken': csrftoken,
+                        },
+                        url: "/approve-change",
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function (data) {
+                            Swal.close()
+                            if (data.check) {
+                                var tbody = document.getElementById('changeTableBody');
+                                var tr = document.getElementById('changeTr' + updateId);
+                                tbody.removeChild(tr)
+                                showTimerGreenAlert("تغییر انتخاب شده اعمال شد", 2000)
+                            } else {
+                                showTimerRedAlert('ثبت اطلاعات با خطا همراه بود', 2000);
+                            }
+                        },
+                        error: function () {
+                            showTimerRedAlert("حذف اطلاعات با خطا همراه بود", 2000);
+                        }
+                    });
+                }, 500);
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('keyup', function () {
+            let searchValue = this.value.toLowerCase();
+            let rows = document.querySelectorAll('#unitTable tbody tr');
+            rows.forEach(row => {
+                let text = row.innerText.toLowerCase();
+                row.style.display = text.includes(searchValue) ? '' : 'none';
+            });
+        });
+
+        function searchDocuments(name, ostan) {
+            showLoadingAlert("درحال جستجو اسناد")
+            setTimeout(function () {
+                const formData = new FormData();
+                formData.append('name', name)
+                formData.append('ostan', ostan)
+                $.ajax({
+                    type: "post",
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                    },
+                    url: "/find-document",
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function (data) {
+                        Swal.close()
+                        if (data.check) {
+                            var tbody = document.querySelector('#docTable tbody');
+                            tbody.innerHTML = '';
+                            var docData = data.data;
+                            var mergedDocs = [];
+                            for (var i = 0; i < docData.length; i++) {
+                                if (Array.isArray(docData[i])) {
+                                    for (var j = 0; j < docData[i].length; j++) {
+                                        mergedDocs.push(docData[i][j]);
+                                    }
+                                }
+                            }
+
+                            function renderTable(docs) {
+                                var tbody = document.querySelector('#docTable tbody');
+                                tbody.innerHTML = '';
+                                for (var i = 0; i < docs.length; i++) {
+                                    var doc = docs[i];
+                                    var row = '<tr>' +
+                                        '<td>' + (i + 1) + '</td>' +
+                                        '<td>' + doc.docName + '</td>' +
+                                        '<td>' + doc.onvanName + '</td>' +
+                                        '<td>' + doc.vahedName + '</td>' +
+                                        '<td>' + doc.uploadedDate + '</td>' +
+                                        '<td>' + doc.uploadedBy + '</td>' +
+                                        '<td><a href="' + doc.downloadUrl + '" target="_blank" class="btn btn-sm btn-primary">دانلود</a></td>' +
+                                        '</tr>';
+                                    tbody.innerHTML += row;
+                                }
+                            }
+
+                            renderTable(mergedDocs);
+                            document.getElementById('docSearch').addEventListener('input', function () {
+                                var value = this.value.trim().toLowerCase();
+                                var filtered = mergedDocs.filter(function (doc) {
+                                    return Object.values(doc).some(function (val) {
+                                        return val && val.toString().toLowerCase().includes(value);
+                                    });
+                                });
+                                renderTable(filtered);
+                            });
+                            var myModal = new bootstrap.Modal(document.getElementById('documentsModal'));
+                            myModal.show();
+                            document.getElementById('closeMainDocumentModal').click()
+                        } else {
+                            showTimerRedAlert('ثبت اطلاعات با خطا همراه بود', 2000);
+                        }
+                    },
+                    error: function () {
+                        showTimerRedAlert("ثبت اطلاعات با خطا همراه بود", 2000);
+                    }
+                });
+            }, 500);
+        }
+    </script>
+    <script>
+        var allGeometry = {{ geometries | safe }};
+        var allIranGeometry = {{ iranGeoData | safe }};
+        var allBookmarkes = {{ bookmarks | safe}};
+        var selectedFeatureName = 'اطلاعات لایه'
+        var map = L.map('map').setView([33.8, 54.325], 5);
+        map.editTools = new L.Editable(map);
+        var CyclOSM = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+            maxZoom: 20,
+        }).addTo(map);
+    </script>
+    <script src="{% static 'js/new/leaflet-image.js' %}"></script>
+    <script src="{% static 'js/new/chart.js' %}"></script>
+    <script src="{% static 'js/new/proj4.js' %}"></script>
+    <script src="{% static 'js/new/jspdf.es.min.js' %}"></script>
+    <script src="{% static 'js/new/leaflet.draw.js' %}"></script>
+    <script src="{% static 'js/new/turf.min.js' %}"></script>
+    <script>
+        var drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        var drawControl = new L.Control.Draw({
+            edit: {
+                featureGroup: drawnItems
+            },
+            draw: {
+                polygon: true,
+                polyline: false,
+                rectangle: true,
+                circle: false,
+                circlemarker: false,
+                marker: false
+            }
+        });
+        map.addControl(drawControl);
+        map.on('draw:created', function (event) {
+            var layer = event.layer;
+            drawnItems.addLayer(layer);
+            var geojsonData = layer.toGeoJSON();
+            checkFeaturesInsidePolygon(geojsonData, allGeometry)
+        });
+
+        function checkFeaturesInsidePolygon(lastDrawnPolygon, geojsonData) {
+            var insidePolygons = geojsonData.features.filter(function (feature) {
+                if (feature.geometry.type === "MultiPolygon") {
+                    return feature.geometry.coordinates.some(polygonCoords => {
+                        var polygonFeature = turf.polygon(polygonCoords);
+                        return turf.booleanContains(lastDrawnPolygon.geometry, polygonFeature.geometry);
+                    });
+                } else {
+                    return turf.booleanContains(lastDrawnPolygon.geometry, feature.geometry);
+                }
+            });
+            var count = insidePolygons.length;
+
+            var geojsonOutput = {
+                "type": "FeatureCollection",
+                "features": insidePolygons
+            };
+
+            const swalWithBootstrapButtons = Swal.mixin({
+                customClass: {
+                    confirmButton: "btn btn-success",
+                    cancelButton: "btn btn-danger"
+                },
+                buttonsStyling: false
+            });
+            swalWithBootstrapButtons.fire({
+                title: "نتیجه جستجو",
+                text: `تعداد ${count} ملک در محدوده وارد شده یافت شد`,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "افزودن به نقشه",
+                cancelButtonText: "لغر",
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    addGroupLayerWithFeatures(geojsonOutput.features, true, 'محدوده رسم شده',)
+                } else {
+                    drawnItems.clear()
+                }
+            });
+        }
+    </script>
+    <script>
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        function addNewFeature() {
+            showLoadingAlert('در حال بارگزاری اطلاعات')
+            const polygonPointsInput = document.getElementById('polygonPointsInput');
+            const pointRows = polygonPointsInput.querySelectorAll('.point-row');
+            if (pointRows.length < 3) {
+                showTimerRedAlert('برای ایجاد یک چند ضلعی، حداقل به سه نقطه نیاز است.', 2000);
+            } else {
+                const coordinates = [];
+                pointRows.forEach(row => {
+                    const longitudeInput = row.querySelector('.longitude-input');
+                    const latitudeInput = row.querySelector('.latitude-input');
+                    if (longitudeInput && latitudeInput) {
+                        const longitude = parseFloat(longitudeInput.value);
+                        const latitude = parseFloat(latitudeInput.value);
+                        if (!isNaN(longitude) && !isNaN(latitude)) {
+                            coordinates.push([longitude, latitude]);
+                        } else {
+                            showTimerRedAlert('لطفاً مقادیر طول و عرض جغرافیایی معتبر وارد کنید.', 2000);
+                        }
+                    }
+                });
+
+                if (coordinates.length < 3) {
+                    showTimerRedAlert('برای ایجاد یک چند ضلعی، حداقل به سه نقطه معتبر نیاز است.', 2000);
+                    return;
+                }
+                coordinates.push(coordinates[0]);
+                const geojsonFeature = {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [coordinates]
+                    },
+                };
+                const geojsonObject = {
+                    type: 'FeatureCollection',
+                    features: [geojsonFeature]
+                };
+                const geojsonString = JSON.stringify(geojsonObject);
+                const geojsonBlob = new Blob([geojsonString], {type: 'application/json'});
+                const formData = new FormData();
+
+                formData.append('geojson_file', geojsonBlob, 'polygon.geojson');
+                const form = document.getElementById('allNewFileForm');
+                const formElements = form.querySelectorAll('input, textarea, select');
+                formElements.forEach(element => {
+                    if (element.id) {
+                        formData.append(element.id, element.value);
+                    }
+                });
+
+                setTimeout(function () {
+                    $.ajax({
+                        type: "post",
+                        headers: {
+                            'X-CSRFToken': csrftoken,
+                        },
+                        url: "/add-new-file",
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function (data) {
+                            if (data.status === 201) {
+                            } else {
+                                showTimerRedAlert('ثبت اطلاعات با خطا همراه بود', 2000);
+                            }
+                        },
+                        error: function () {
+                            showTimerRedAlert("ثبت اطلاعات با خطا همراه بود", 2000);
+                        }
+                    });
+                }, 500);
+            }
+        }
+
+        const offCanvas1 = document.getElementById("attributeTableOffCanvas");
+        const resizeDiv = document.querySelector(".resize-div");
+        let isResizing = false;
+        let startY;
+        resizeDiv.addEventListener("mousedown", (event) => {
+            isResizing = true;
+            startY = event.clientY;
+            document.body.style.cursor = "ns-resize";
+        });
+        document.addEventListener("mousemove", (event) => {
+            if (isResizing) {
+                const heightChange = startY - event.clientY;
+                const newHeight = Math.max(offCanvas1.offsetHeight + heightChange, 100); // حداقل ارتفاع 100px
+                offCanvas1.style.height = `${newHeight}px`;
+                startY = event.clientY;
+            }
+        });
+        document.addEventListener("mouseup", () => {
+            isResizing = false;
+            document.body.style.cursor = "default";
+        });
+
+        async function urlToBase64(url) {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const reader = new FileReader();
+            return new Promise((resolve, reject) => {
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+    </script>
+    <script>
+        jalaliDatepicker.startWatch({
+            zIndex: 10000
+        });
+        var addDviId = 1;
+        var reportIndex = 0;
+
+        function filterReportDate(dbId) {
+            var firstDate = document.getElementById('firstDate').value;
+            var endDate = document.getElementById('endDate').value;
+            Swal.fire({
+                title: "در حال پردازش اطلاعات",
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+            })
+
+            setTimeout(function () {
+                $.ajax({
+                    url: '/filter-report',
+                    type: 'post',
+                    data: {
+                        'firstDate': firstDate,
+                        'endDate': endDate,
+                        'dbId': reportIndex
+                    },
+                    success: function (data) {
+                        Swal.close()
+                        if (data.check) {
+                            const tableBody = document.getElementById('tableBody');
+                            tableBody.innerHTML = '';
+                            index = 0;
+                            data.changes.forEach(item => {
+                                index++;
+                                const row = document.createElement('tr');
+                                const rowNumber = document.createElement('td');
+                                const cellUsername = document.createElement('td');
+                                const cellKey = document.createElement('td');
+                                const cellOldValue = document.createElement('td');
+                                const cellNewValue = document.createElement('td');
+                                const cellDate = document.createElement('td');
+
+                                cellUsername.textContent = item.username;
+                                rowNumber.textContent = index;
+                                cellKey.textContent = persianName[item.key];
+                                cellOldValue.textContent = item.old_value;
+                                cellNewValue.textContent = item.new_value;
+                                cellDate.textContent = item.date;
+
+                                row.appendChild(rowNumber);
+                                row.appendChild(cellUsername);
+                                row.appendChild(cellKey);
+                                row.appendChild(cellOldValue);
+                                row.appendChild(cellNewValue);
+                                row.appendChild(cellDate);
+                                tableBody.appendChild(row);
+                            });
+                        } else {
+                            Swal.fire({
+                                position: "top-end",
+                                icon: "warning",
+                                title: "خطای سرور رخ داد",
+                                showConfirmButton: false,
+                                timer: 3000
+                            });
+                        }
+                    },
+                    error: function (e) {
+                        Swal.close()
+                        Swal.fire({
+                            position: "top-end",
+                            icon: "warning",
+                            title: "خطای سرور رخ داد",
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    },
+                    failure: function (data) {
+                        Swal.close()
+                        Swal.fire({
+                            position: "top-end",
+                            icon: "warning",
+                            title: "خطای سرور رخ داد",
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    }
+                });
+            }, 100)
+        }
+    </script>
+    <script>
+        let selectedGeometryForClassify;
+        const viewSVG = '{% static "images/svg/view.svg" %}'
+        const findMap = '{% static "images/svg/findMap.svg" %}'
+        const downloadSVG = '{% static "images/svg/download.svg" %}'
+        const zoomSVG = '{% static "images/svg/zoom.svg" %}'
+        const logSVG = '{% static "images/svg/logs.svg" %}'
+        const documentSVG = '{% static "images/svg/documents.svg" %}'
+        const editPolygonSVG = '{% static "images/svg/edit_polygon.svg" %}'
+        const editSVG = '{% static "images/svg/edit.svg" %}'
+        const editSVGRed = '{% static "images/svg/edit_red.svg" %}'
+        const printerSVG = '{% static "images/svg/printer.svg" %}'
+        const detailSVG = '{% static "images/svg/detail.svg" %}'
+        const buildingSVG = '{% static "images/svg/building.svg" %}'
+        const greenhouseSVG = '{% static "images/svg/greenhouse.svg" %}'
+        const landSVG = '{% static "images/svg/land.svg" %}'
+        const apartmentSVG = '{% static "images/svg/apartment.svg" %}'
+        const defaultSVG = '{% static "images/svg/location.svg" %}'
+        const chatBotSVG = '{% static "images/svg/chatBot.svg" %}'
+        const closeSVG = '{% static "images/svg/close.svg" %}'
+        const approveSVG = '{% static "images/new/190411.png" %}'
+        const deleteSVG = '{% static "images/new/1345874.png" %}'
+        const provinceList = {{ provinceList | safe }};
+
+    </script>
+    <script src="{% static 'js/new/html2pdf.bundle.min.js' %}"></script>
+    <script src="{% static 'js/new/exceljs.min.js' %}"></script>
+    <script src="{% static 'js/new/FileSaver.min.js' %}"></script>
+    <script src="{% static 'js/basic.js' %}"></script>
+    <script src="{% static 'js/new/pdf.min.js' %}"></script>
+    <script src="{% static 'js/new/xlsx.full.min.js' %}"></script>
+    <script src="{% static 'js/openData.js' %}"></script>
+    <script src="{% static 'js/layers.js' %}"></script>
+    <script>
+        function setActiveStep(index) {
+            var steps = document.getElementsByClassName('step');
+            for (var i = 0; i < steps.length; i++) {
+                steps[i].classList.remove('active-step');
+            }
+            steps[index].classList.add('active-step');
+
+            var contents = document.getElementsByClassName('content');
+            for (var i = 0; i < contents.length; i++) {
+                contents[i].classList.remove('active-content');
+            }
+            document.getElementById('content-' + index).classList.add('active-content');
+        }
+    </script>
+    <script src="{% static 'js/reports.js' %}"></script>
+    <script>
+        const offcanvas = document.getElementById("rightOffCanvas");
+        const resizer = offcanvas.querySelector(".resizer");
+        resizer.addEventListener("mousedown", (e) => {
+            document.body.style.userSelect = "none";
+            document.addEventListener("mousemove", resize);
+            document.addEventListener("mouseup", stopResize);
+        });
+
+        function resize(e) {
+            const newWidth = e.clientX - offcanvas.getBoundingClientRect().left;
+            if (newWidth >= 150 && newWidth <= 600) {
+                offcanvas.style.width = `${newWidth}px`;
+            }
+        }
+
+        function stopResize() {
+            document.body.style.userSelect = "";
+            document.removeEventListener("mousemove", resize);
+            document.removeEventListener("mouseup", stopResize);
+        }
+    </script>
+    <script>
+        var selectedFeatures = [];
+        var filterConditionCounter = 1;
+        var allFeatures = allGeometry?.features || [];
+        var selectedFields = {};
+
+        function normalizeString(str) {
+            return String(str || "").toLowerCase().trim();
+        }
+
+        function populateAttributeFields(data) {
+            const attributeFieldDropdowns = document.querySelectorAll('.attributeField');
+            if (data && data.length > 0) {
+                const firstFeature = data[0];
+                const fields = Object.keys(firstFeature.properties);
+                attributeFieldDropdowns.forEach(dropdown => {
+                    dropdown.innerHTML = '<option value="">انتخاب فیلد</option>';
+                    fields.forEach(field => {
+                        if (persianName[field] !== undefined) {
+                            const option = document.createElement('option');
+                            option.value = field;
+                            option.textContent = persianName[field];
+                            dropdown.appendChild(option);
+                        }
+                    });
+
+                    // اگر فیلد قبلاً انتخاب شده باشد، آن را دوباره انتخاب می‌کنیم
+                    const fieldId = dropdown.id.split('_')[1];
+                    if (selectedFields[fieldId]) {
+                        dropdown.value = selectedFields[fieldId];
+                    }
+
+                    dropdown.addEventListener('change', function () {
+                        const fieldId = this.id.split('_')[1];
+                        selectedFields[fieldId] = this.value;
+
+                        if (this.value) {
+                            const newDropDown = document.getElementById('allNewValueToSelect_' + (this.id.split('_')[1]));
+                            const input = document.getElementById('attributeValue_' + (this.id.split('_')[1]));
+                            if (newDropDown) newDropDown.innerHTML = '';
+                            const allOptions = new Set();
+                            for (const feature of allFeatures) {
+                                const propValue = feature.properties[this.value];
+                                if (propValue !== undefined && !allOptions.has(propValue)) {
+                                    allOptions.add(propValue);
+                                    const newOption = document.createElement('li');
+                                    newOption.className = 'dropdown-item';
+                                    newOption.style.color = 'black'
+                                    newOption.textContent = propValue;
+                                    newDropDown.appendChild(newOption);
+                                    newOption.addEventListener('click', function () {
+                                        input.value = this.textContent;
+                                    });
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+        }
+
+        document.getElementById('addFilterCondition').addEventListener('click', function () {
+            const filterConditionsDiv = document.getElementById('filterConditions');
+            const newConditionDiv = document.createElement('div');
+            newConditionDiv.className = 'filter-condition';
+            newConditionDiv.innerHTML = `
+                        <div class="row g-2 align-items-center mb-2">
+                            <div class="col-md-1 text-center">
+                                <select class="form-select form-select-sm conditionConnector" id="conditionConnector_${filterConditionCounter}">
+                                    <option value="AND">و</option>
+                                    <option value="OR">یا</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select form-select-sm attributeField" id="attributeField_${filterConditionCounter}">
+                                    <option value="">انتخاب فیلد</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select form-select-sm comparisonOperator" id="comparisonOperator_${filterConditionCounter}">
+                                    <option value="equals">برابر است با</option>
+                                    <option value="notEquals">نابرابر است با</option>
+                                    <option value="greaterThan">بزرگتر از</option>
+                                    <option value="lessThan">کوچکتر از</option>
+                                    <option value="contains">شامل می‌شود</option>
+                                    <option value="startsWith">شروع می‌شود با</option>
+                                    <option value="endsWith">تمام می‌شود با</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="input-group" dir="ltr">
+                                    <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">انتخاب</button>
+                                    <ul class="dropdown-menu dropdown-menu-end text-end" id="allNewValueToSelect_${filterConditionCounter}" style="max-height: 300px; overflow-y: auto;"></ul>
+                                    <input type="text" class="form-control form-select-sm attributeValue" id="attributeValue_${filterConditionCounter}" placeholder="متن جستجو...">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-sm btn-danger remove-condition">حذف</button>
+                            </div>
+                        </div>
+                    `;
+            filterConditionsDiv.appendChild(newConditionDiv);
+
+            populateAttributeFields(allFeatures);
+            filterConditionCounter++;
+
+            newConditionDiv.querySelector('.remove-condition').addEventListener('click', function () {
+                newConditionDiv.remove();
+            });
+        });
+
+        function applyAttributeFilter() {
+            const conditions = document.querySelectorAll('.filter-condition');
+            const layerName = document.getElementById('newLayerName').value.trim();
+            if (layerName === '') {
+                showTimerRedAlert('لطفا یک نام را انتخاب کنید', 2000);
+                return;
+            }
+
+            selectedFeatures = [];
+
+            const groupedConditions = {};
+            conditions.forEach(condition => {
+                const attributeField = condition.querySelector('.attributeField').value;
+                const comparisonOperator = condition.querySelector('.comparisonOperator').value;
+                const attributeValue = condition.querySelector('.attributeValue').value;
+                const conditionConnectorElement = condition.querySelector('.conditionConnector');
+                const conditionConnector = conditionConnectorElement ? conditionConnectorElement.value : 'AND'; // پیش فرض برای اولین شرط
+
+                if (!attributeField || !comparisonOperator) return;
+
+                const conditionObj = {
+                    comparisonOperator,
+                    attributeValue,
+                    connector: conditionConnector
+                };
+
+                if (!groupedConditions[attributeField]) {
+                    groupedConditions[attributeField] = [];
+                }
+                groupedConditions[attributeField].push(conditionObj);
+            });
+
+            for (const feature of allFeatures) {
+                let allFieldsMatched = true;
+
+                for (const field in groupedConditions) {
+                    const fieldConditions = groupedConditions[field];
+                    let fieldMatch = false;
+
+                    for (let i = 0; i < fieldConditions.length; i++) {
+                        const condition = fieldConditions[i];
+                        const featureValueRaw = feature.properties[field];
+                        const featureValue = normalizeString(featureValueRaw);
+                        const inputValue = normalizeString(condition.attributeValue);
+                        let match = false;
+
+                        switch (condition.comparisonOperator) {
+                            case 'equals':
+                                match = featureValue === inputValue;
+                                break;
+                            case 'notEquals':
+                                match = featureValue !== inputValue;
+                                break;
+                            case 'greaterThan':
+                                match = Number(featureValueRaw) > Number(condition.attributeValue);
+                                break;
+                            case 'lessThan':
+                                match = Number(featureValueRaw) < Number(condition.attributeValue);
+                                break;
+                            case 'contains':
+                                match = featureValue.includes(inputValue);
+                                break;
+                            case 'startsWith':
+                                match = featureValue.startsWith(inputValue);
+                                break;
+                            case 'endsWith':
+                                match = featureValue.endsWith(inputValue);
+                                break;
+                        }
+
+                        if (i === 0) {
+                            fieldMatch = match;
+                        } else {
+                            if (condition.connector === 'AND') {
+                                fieldMatch = fieldMatch && match;
+                            } else if (condition.connector === 'OR') {
+                                fieldMatch = fieldMatch || match;
+                            }
+                        }
+                    }
+
+                    if (!fieldMatch) {
+                        allFieldsMatched = false;
+                        break;
+                    }
+                }
+                if (allFieldsMatched) {
+                    selectedFeatures.push(feature);
+                }
+            }
+            addGroupLayerWithFeatures(selectedFeatures, true, layerName);
+            const selectByAttributeModal = bootstrap.Modal.getInstance(document.getElementById('selectByAttributeModal'));
+            selectByAttributeModal.hide();
+        }
+
+        document.getElementById('applySelection').addEventListener('click', applyAttributeFilter);
+        populateAttributeFields(allFeatures);
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const addPointButton = document.getElementById('addPoint');
+            const polygonPointsInput = document.getElementById('polygonPointsInput');
+
+            function createPointRow() {
+                const pointRow = document.createElement('div');
+                pointRow.classList.add('row', 'g-2', 'align-items-center', 'mb-3', 'point-row');
+                pointRow.innerHTML = `
+                    <div class="col">
+                        <input type="number" class="form-control form-control-sm longitude-input"
+                               placeholder="X (طول)" name="x[]">
+                    </div>
+                    <div class="col">
+                        <input type="number" class="form-control form-control-sm latitude-input"
+                               placeholder="Y (عرض)" name="y[]">
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-danger btn-sm remove-point">حذف</button>
+                    </div>
+                `;
+                return pointRow;
+            }
+
+            addPointButton.addEventListener('click', function () {
+                const pointRows = polygonPointsInput.querySelectorAll('.point-row');
+                if (pointRows.length < 10) {
+                    const newPointRow = createPointRow();
+                    polygonPointsInput.appendChild(newPointRow);
+                    attachRemovePointListener(newPointRow.querySelector('.remove-point'));
+                    updateRemoveButtonVisibility();
+                } else {
+                    alert('حداکثر تعداد نقاط مجاز است.');
+                }
+            });
+
+            function attachRemovePointListener(removeButton) {
+                removeButton.addEventListener('click', function () {
+                    const pointRow = this.closest('.point-row');
+                    pointRow.remove();
+                    updateRemoveButtonVisibility();
+                });
+            }
+
+            function updateRemoveButtonVisibility() {
+                const pointRows = polygonPointsInput.querySelectorAll('.point-row');
+                const removeButtons = polygonPointsInput.querySelectorAll('.remove-point');
+
+                removeButtons.forEach(button => {
+                    button.disabled = pointRows.length <= 3;
+                });
+            }
+
+            const initialRemoveButtons = polygonPointsInput.querySelectorAll('.remove-point');
+            initialRemoveButtons.forEach(attachRemovePointListener);
+
+            updateRemoveButtonVisibility();
+
+        });
+        const detailDiv = document.getElementById("newMapDetail");
+
+        function checkAndToggleBorder() {
+            if (detailDiv.innerHTML.trim() !== "") {
+                detailDiv.classList.add("with-border");
+            } else {
+                detailDiv.classList.remove("with-border");
+            }
+        }
+
+        checkAndToggleBorder();
+    </script>
+{% endblock %}

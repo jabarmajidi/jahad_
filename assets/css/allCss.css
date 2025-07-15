@@ -1,0 +1,35 @@
+.marginTop10 {
+    margin-top: 10px;
+}
+
+.marginTop20 {
+    margin-top: 20px;
+}
+
+.dropdown-item {
+    color: #fff;
+}
+
+.dropdown .dropdown-menu {
+    display: none;
+    background: #212529;
+}
+
+.dropdown:hover > .dropdown-menu,
+.dropend:hover > .dropdown-menu {
+    display: block;
+    margin-top: .1em;
+    margin-left: .1em;
+}
+
+@media screen and (min-width: 769px) {
+    .dropend:hover > .dropdown-menu {
+        position: absolute;
+        top: 0;
+        left: 100%;
+    }
+
+    .dropend .dropdown-toggle {
+        margin-left: .5em;
+    }
+}

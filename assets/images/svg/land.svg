@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="512"
+     height="512" x="0" y="0" viewBox="0 0 64 64" style="enable-background:new 0 0 512 512" xml:space="preserve"
+     class=""><g><path fill="#6bc148" d="M62 58 52 38H12L2 58v4h60z" opacity="1" data-original="#6bc148"></path><g
+        fill="#559b38"><path d="M1.892 58h60v4h-60zM43.714 49l2.224 9h2.06l-2.224-9H57.5l-1-2H45.28l-2.224-9h-2.06l2.224 9H33v-9h-2v9H20.93l2.303-9h-2.064l-2.303 9H7.5l-1 2h11.854l-2.304 9h2.065l2.303-9H31v9h2v-9z" fill="#559b38" opacity="1" data-original="#559b38"></path>
+    <path d="M27 45a1 1 0 0 0 .707-.293l2-2-1.414-1.414L27 42.586l-1.293-1.293-1.414 1.414 2 2A1 1 0 0 0 27 45zM25 52.586l-1.293-1.293-1.414 1.414 2 2a1 1 0 0 0 1.414 0l2-2-1.414-1.414zM38 52.586l-1.293-1.293-1.414 1.414 2 2a1 1 0 0 0 1.414 0l2-2-1.414-1.414zM38 45a1 1 0 0 0 .707-.293l2-2-1.414-1.414L38 42.586l-1.293-1.293-1.414 1.414 2 2A1 1 0 0 0 38 45zM49 45a1 1 0 0 0 .707-.293l2-2-1.414-1.414L49 42.586l-1.293-1.293-1.414 1.414 2 2A1 1 0 0 0 49 45zM52 52.586l-1.293-1.293-1.414 1.414 2 2a1 1 0 0 0 1.414 0l2-2-1.414-1.414zM12 52.586l-1.293-1.293-1.414 1.414 2 2a1 1 0 0 0 1.414 0l2-2-1.414-1.414zM15 45a1 1 0 0 0 .707-.293l2-2-1.414-1.414L15 42.586l-1.293-1.293-1.414 1.414 2 2A1 1 0 0 0 15 45z"
+          fill="#559b38" opacity="1" data-original="#559b38"></path></g><path fill="#0e7000"
+                                                                              d="M45.878 26.338c5.829-10.36-.97-23.621-12.841-24.308Q32.523 2 32 2t-1.037.03c-11.871.687-18.67 13.948-12.841 24.308L32 51z"
+                                                                              opacity="1" data-original="#aa2b24"
+                                                                              class=""></path><circle cx="32" cy="18"
+                                                                                                      r="12"
+                                                                                                      fill="#ffffff"
+                                                                                                      opacity="1"
+                                                                                                      data-original="#e0e0e0"
+                                                                                                      class=""></circle><path
+        fill="#ffffff" d="M32 6a11.986 11.986 0 0 0-10.382 18H37a3 3 0 0 0 3-3V9.074A11.94 11.94 0 0 0 32 6z"
+        opacity="1" data-original="#f2f2f2" class=""></path><path fill="#2763bb" d="m25 18 7-7 7 7z" opacity="1"
+                                                                  data-original="#2763bb" class=""></path><path
+        fill="#cb7570" d="M27 18h10v7H27z" opacity="1" data-original="#ffffff" class=""></path><path fill="#3079e6"
+                                                                                                     d="M30 21h4v4h-4zM34 13l-2-2-5 5h5a2 2 0 0 0 2-2z"
+                                                                                                     opacity="1"
+                                                                                                     data-original="#3079e6"
+                                                                                                     class=""></path></g></svg>

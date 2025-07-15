@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% extends 'base.html' %}
+{% load static %}
+
+{% block link %}
+    <title>نقشه املاک و مستقلات</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.2/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="{% static 'css/mainMap.css' %}">
+
+
+    <style>
+        #map {
+            height: 100%
+        }
+
+        #printMap {
+            height: 370px;
+            width: 80%;
+            border-radius: 2%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .option {
+            display: inline-block;
+            padding: 10px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        .selected {
+            background-color: green;
+            color: white;
+        }
+
+        .stepper {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .step {
+            padding: 10px;
+            border-left: 3px solid #ccc;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .active-step {
+            border-color: #00e203;
+            background-color: #e9ecef;
+        }
+
+        .content {
+            display: none;
+        }
+
+        .active-content {
+            display: block;
+        }
+
+        @keyframes expandWidth {
+            from {
+                flex-basis: 0;
+            }
+            to {
+                flex-basis: 50%;
+            }
+        }
+
+        @keyframes collapseWidth {
+            from {
+                flex-basis: 50%;
+            }
+            to {
+                flex-basis: 0;
+            }
+        }
+
+        #col3.expanded {
+            animation: expandWidth 1s forwards;
+        }
+
+        #col3.collapsed {
+            animation: collapseWidth 1s forwards;
+            overflow-x: hidden;
+        }
+
+        .pointerCursor {
+            cursor: pointer;
+        }
+
+        .rtl-input {
+            direction: rtl;
+            text-align: right;
+        }
+    </style>
+
+    {# ---------------------- set scroll bar  #}
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="container1 mt-1">
+        <div class="column p-2 d-none" id="col1" style="flex-basis: 1px">
+            {#            <div class="d-flex justify-content-between">#}
+            {#                <button class="btn btn-danger btn-sm">بستن</button>#}
+            {#                <h5>جستجوی پیشرفته</h5>#}
+            {#            </div>#}
+            {#            <div class="input-group input-group-sm mt-2 mb-3">#}
+            {#                <input type="text" class="form-control" placeholder="عنوان را وارد کنید"#}
+            {#                       aria-label="Text input with dropdown button">#}
+            {#                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"#}
+            {#                        aria-expanded="false">گزینه ها#}
+            {#                </button>#}
+            {#                <ul class="dropdown-menu dropdown-menu-end">#}
+            {#                    <li><a class="dropdown-item text-black" href="#">جستجو در تب 1</a></li>#}
+            {#                    <li><a class="dropdown-item text-black" href="#">جستجو در تب 2</a></li>#}
+            {#                    <li><a class="dropdown-item text-black" href="#">جستجو در تب 3</a></li>#}
+            {#                </ul>#}
+            {#            </div>#}
+            {#            <div class="mt-2" dir="rtl">#}
+            {#                <span>جستجو بر اساس تاریخ</span>#}
+            {#                <div class="d-flex justify-content-between">#}
+            {#                    <input type="date" class="form-control form-control-sm w-50">#}
+            {#                    <input type="date" class="form-control form-control-sm w-50">#}
+            {#                </div>#}
+            {#            </div>#}
+            {#            <div class="mt-2" dir="rtl">#}
+            {#                <span>جستجو بر اساس محدوده مکانی</span>#}
+            {#                <div class="d-flex justify-content-between">#}
+            {#                    <input type="text" class="form-control form-control-sm w-50" placeholder="طول جغرافیایی">#}
+            {#                    <input type="text" class="form-control form-control-sm w-50" placeholder="عرض جغرافیایی">#}
+            {#                </div>#}
+            {#            </div>#}
+        </div>
+        <div class="resizer" id="resizer1"></div>
+        <div class="column" id="col2" style="flex-basis: 100%">
+            <div id="map"></div>
+        </div>
+        <div class="resizer" id="resizer2"></div>
+        <div class="column p-2 d-none" id="col3" style="flex-basis: 0" dir="rtl">
+            {#            <div class="d-flex justify-content-between">#}
+            {#                <h5>جزئیات ملک</h5>#}
+            {#                <button class="btn btn-danger btn-sm">بستن</button>#}
+            {#            </div>#}
+            {#            <div class="mt-2">#}
+            {#                <table class="table table-dark table-striped">#}
+            {#                    <thead>#}
+            {#                    <tr class="rounded">#}
+            {#                        <th scope="col">#</th>#}
+            {#                        <th scope="col">عنوان اول</th>#}
+            {#                        <th scope="col">عنوان دوم</th>#}
+            {#                        <th scope="col">عنوان سوم</th>#}
+            {#                    </tr>#}
+            {#                    </thead>#}
+            {#                    <tbody>#}
+            {#                    <tr>#}
+            {#                        <th scope="row">1</th>#}
+            {#                        <td>مقدار اول</td>#}
+            {#                        <td>مقدار دوم</td>#}
+            {#                        <td>مقدار سوم</td>#}
+            {#                    </tr>#}
+            {#                    <tr>#}
+            {#                        <th scope="row">1</th>#}
+            {#                        <td>مقدار اول</td>#}
+            {#                        <td>مقدار دوم</td>#}
+            {#                        <td>مقدار سوم</td>#}
+            {#                    </tr>#}
+            {#                    <tr>#}
+            {#                        <th scope="row">1</th>#}
+            {#                        <td>مقدار اول</td>#}
+            {#                        <td>مقدار دوم</td>#}
+            {#                        <td>مقدار سوم</td>#}
+            {#                    </tr>#}
+            {#                    <tr>#}
+            {#                        <th scope="row">1</th>#}
+            {#                        <td>مقدار اول</td>#}
+            {#                        <td>مقدار دوم</td>#}
+            {#                        <td>مقدار سوم</td>#}
+            {#                    </tr>#}
+            {#                    <tr>#}
+            {#                        <th scope="row">1</th>#}
+            {#                        <td>مقدار اول</td>#}
+            {#                        <td>مقدار دوم</td>#}
+            {#                        <td>مقدار سوم</td>#}
+            {#                    </tr>#}
+            {#                    <tr>#}
+            {#                        <th scope="row">1</th>#}
+            {#                        <td>مقدار اول</td>#}
+            {#                        <td>مقدار دوم</td>#}
+            {#                        <td>مقدار سوم</td>#}
+            {#                    </tr>#}
+            {#                    </tbody>#}
+            {#                </table>#}
+            {#            </div>#}
+            {#            <div class="mt-2">#}
+            {#                <button class="btn btn-sm btn-success">دریافت خروجی</button>#}
+            {#            </div>#}
+        </div>
+    </div>
+    {#    <div class="modal modal-xl fade" id="staticBackdrop" data-bs-backdrop="static"#}
+    {#         data-bs-keyboard="false" tabindex="-1"#}
+    {#         aria-labelledby="staticBackdropLabel" aria-hidden="true">#}
+    {#        <div class="modal-dialog" dir="rtl">#}
+    {#            <div class="modal-content">#}
+    {#                <div class="modal-header">#}
+    {#                    <h5 class="modal-title" id="staticBackdropLabel">افزودن ملک جدید</h5>#}
+    {#                </div>#}
+    {#                <div class="modal-body">#}
+    {#                    <div>#}
+    {#                        <span>انتخاب نوع ملک</span>#}
+    {#                        <br>#}
+    {#                        <div class="option rounded" style="font-size: 12px" onclick="selectOption(this)">ملک نوع#}
+    {#                            اول#}
+    {#                        </div>#}
+    {#                        <div class="option rounded" style="font-size: 12px" onclick="selectOption(this)">ملک نوع#}
+    {#                            دوم#}
+    {#                        </div>#}
+    {#                        <div class="option rounded" style="font-size: 12px" onclick="selectOption(this)">ملک نوع#}
+    {#                            سوم#}
+    {#                        </div>#}
+    {#                        <div class="option rounded" style="font-size: 12px" onclick="selectOption(this)">ملک نوع#}
+    {#                            چهارم#}
+    {#                        </div>#}
+    {#                    </div>#}
+    {#                    <div class="mt-2 d-flex">#}
+    {#                        <div class="stepper col-1">#}
+    {#                            <div class="step active-step rounded" onclick="setActiveStep(0)">#}
+    {#                                <div class="bt-info p-1">#}
+    {#                                    <span class="material-symbols-outlined">#}
+    {#                                        search#}
+    {#                                    </span>#}
+    {#                                    <br>#}
+    {#                                    <span>1</span>#}
+    {#                                </div>#}
+    {#                            </div>#}
+    {#                            <div class="step rounded" onclick="setActiveStep(1)">#}
+    {#                                <div class="bt-info p-1">#}
+    {#                                    <span class="material-symbols-outlined">#}
+    {#                                        search#}
+    {#                                    </span>#}
+    {#                                    <br>#}
+    {#                                    <span>2</span>#}
+    {#                                </div>#}
+    {#                            </div>#}
+    {#                            <div class="step rounded" onclick="setActiveStep(2)">#}
+    {#                                <div class="bt-info p-1">#}
+    {#                                    <span class="material-symbols-outlined">#}
+    {#                                        search#}
+    {#                                    </span>#}
+    {#                                    <br>#}
+    {#                                    <span>2</span>#}
+    {#                                </div>#}
+    {#                            </div>#}
+    {#                        </div>#}
+    {#                        <div id="content-0" class="content active-content col-11 margin-right-10 p-2">#}
+    {#                            <h4>اطلاعات مرحله اول</h4>#}
+    {#                            <div class="d-flex justify-content-between">#}
+    {#                                <label class="col-6">#}
+    {#                                    نام پروند#}
+    {#                                    <input type="text" class="form-control form-control-sm">#}
+    {#                                </label>#}
+    {#                                <label class="col-5">#}
+    {#                                    نام پروند#}
+    {#                                    <input type="text" class="form-control form-control-sm">#}
+    {#                                </label>#}
+    {#                            </div>#}
+    {#                            <div class="d-flex justify-content-between mt-2">#}
+    {#                                <label class="col-6">#}
+    {#                                    جزییات دوم#}
+    {#                                    <input type="text" class="form-control form-control-sm">#}
+    {#                                </label>#}
+    {#                                <label class="col-5">#}
+    {#                                    جزئیات سوم#}
+    {#                                    <input type="text" class="form-control form-control-sm">#}
+    {#                                </label>#}
+    {#                            </div>#}
+    {#                            <div class="input-group mb-3 mt-2" dir="ltr">#}
+    {#                                <button class="btn btn-outline-secondary dropdown-toggle" type="button"#}
+    {#                                        data-bs-toggle="dropdown" aria-expanded="false">وضعیت پرونده#}
+    {#                                </button>#}
+    {#                                <ul class="dropdown-menu">#}
+    {#                                    <li><a class="dropdown-item" href="#">Action</a></li>#}
+    {#                                    <li><a class="dropdown-item" href="#">Another action</a></li>#}
+    {#                                    <li><a class="dropdown-item" href="#">Something else here</a></li>#}
+    {#                                    <li>#}
+    {#                                        <hr class="dropdown-divider">#}
+    {#                                    </li>#}
+    {#                                    <li><a class="dropdown-item" href="#">Separated link</a></li>#}
+    {#                                </ul>#}
+    {#                                <input type="text" class="form-control" aria-label="Text input with dropdown button">#}
+    {#                            </div>#}
+    {#                            <div class="mt-2" dir="ltr">#}
+    {#                                <div class="input-group mb-3">#}
+    {#                                    <label class="input-group-text" for="inputGroupSelect01">گزینه ها</label>#}
+    {#                                    <select class="form-select" id="inputGroupSelect01">#}
+    {#                                        <option selected>فایل ژئومتری</option>#}
+    {#                                        <option value="1">One</option>#}
+    {#                                        <option value="2">Two</option>#}
+    {#                                        <option value="3">Three</option>#}
+    {#                                    </select>#}
+    {#                                </div>#}
+    {#                            </div>#}
+    {#                        </div>#}
+    {#                        <div id="content-1" class="content col-10">#}
+    {#                            <h4>محتوای مرحله ۲</h4>#}
+    {#                            <p>این محتوای مربوط به مرحله دوم است.</p>#}
+    {#                        </div>#}
+    {#                        <div id="content-2" class="content col-10">#}
+    {#                            <h4>محتوای مرحله ۳</h4>#}
+    {#                            <p>این محتوای مربوط به مرحله سوم است.</p>#}
+    {#                        </div>#}
+    {#                    </div>#}
+    {#                    <div class="mt-2 text-left mb-2">#}
+    {#                        <button class="btn btn-sm btn-primary">#}
+    {#                            مرحله بعدی#}
+    {#                        </button>#}
+    {#                    </div>#}
+    {#                    <div class="modal-footer">#}
+    {#                        <button type="button" class="btn btn-warning" data-bs-dismiss="modal">لغو</button>#}
+    {#                        <button type="button" class="btn btn-success">ثبت نهایی</button>#}
+    {#                    </div>#}
+    {#                </div>#}
+    {#            </div>#}
+    {#        </div>#}
+    {#    </div>#}
+
+    <div class="modal text-right" tabindex="-1" id="reportModal" dir="rtl">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="text-center">
+                    <h4>مشاهده سابقه تغییرات</h4>
+                </div>
+                <div class="row pt-2 p-1">
+                    <div class="col-2"><span>فیلتر گزاری</span></div>
+                    <div class="col-4"><input class=" form-control form-control-sm" type="date"
+                                              placeholder="تاریخ شروع فیلتر"></div>
+                    <div class="col-4"><input class="form-control form-control-sm" type="date"
+                                              placeholder="تاریخ انتهای فیلتر"></div>
+                    <div class="col-2">
+                        <button class="btn btn-success h-75 text-center">اعمال فیلتر</button>
+                    </div>
+                </div>
+                <hr>
+                <div class="modal-body">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>دیف</th>
+                            <th style="width: 60px">نام کاربری</th>
+                            <th>کلید</th>
+                            <th>مقدار قبلی</th>
+                            <th>مقدار جدید</th>
+                            <th style="width: 100px">تاریخ</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal text-right" tabindex="-1" id="printModal" dir="rtl">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="row p-2">
+                    <div class="col-5">
+                        <label class="form-label">عنوان</label>
+                        <input id="printMapTitleInput" class="form-control form-control-sm" type="text"
+                               placeholder="عنوان را وارد کنید">
+                    </div>
+                    <div class="col-5">
+                        <label class="form-label">توضیحات</label>
+                        <input id="printMapDescriptionInput" class="form-control form-control-sm" type="text"
+                               placeholder="توضیحات مختصر">
+                    </div>
+                    <div class="col-2">
+                        <div class="btn-group" role="group">
+                            <button style="margin-top: 30px" type="button" class="btn btn-primary dropdown-toggle"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false">
+                                چاپ نقشه
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item text-black text-right pointerCursor"
+                                       onclick="printMapToPNG()">خروجی با فرمت jpg</a>
+                                </li>
+                                </li>
+                                <li><a class="dropdown-item text-black text-right pointerCursor"
+                                       onclick="printMapToPDF()">خروجی با فرمت pdf</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-start">
+                    <div class="mt-2" style="width: 200px; margin-right: 10px">
+                        <div class="mb-3" id="searchDataPrintDiv">
+
+                        </div>
+                    </div>
+                    <div class="d-flex" id="selectedKey"></div>
+                </div>
+                <hr>
+                <div id="mainMapPrintDiv">
+                    <div class="d-flex justify-content-between" style="margin-right: 10px; margin-left: 10px">
+                        <div class="text-center">
+                            <h4 id="printMapTitle">عنوان نقشه</h4>
+                            <span id="printMapSpan">توضیحات نقشه</span>
+                        </div>
+                        <div id="newMapDetail">
+
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-center">
+                        <div id="printMap"></div>
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="d-flex justify-content-between w-75">
+                            <div><span>بزرگنمایی:</span> <span id="zoomLevel">5</span></div>
+                            <div><span>مقیاس نقشه:</span> <span id="mapPrintZoom">1:50000</span></div>
+                        </div>
+                    </div>
+                    <div class="mt-2">.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+
+{% block script %}
+    <script>
+        const downloadSVG = '{% static "images/svg/download.svg" %}'
+        const zoomSVG = '{% static "images/svg/zoom.svg" %}'
+        const logSVG = '{% static "images/svg/logs.svg" %}'
+        const documentSVG = '{% static "images/svg/documents.svg" %}'
+        const editSVG = '{% static "images/svg/edit.svg" %}'
+        const editSVGRed = '{% static "images/svg/edit_red.svg" %}'
+        const detailSVG = '{% static "images/svg/detail.svg" %}'
+        const buildingSVG = '{% static "images/svg/building.svg" %}'
+        const greenhouseSVG = '{% static "images/svg/greenhouse.svg" %}'
+        const landSVG = '{% static "images/svg/land.svg" %}'
+        const apartmentSVG = '{% static "images/svg/apartment.svg" %}'
+        const defaultSVG = '{% static "images/svg/location.svg" %}'
+
+        var allGeometry = {{ geometries | safe }};
+        var allIranGeometry = {{ iranGeoData | safe }};
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+            integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.3.2/html2canvas.min.js"></script>
+    <script src="{% static 'js/basic.js' %}"></script>
+    <script src="https://unpkg.com/leaflet.gridlayer@latest/Leaflet.GridLayer.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.contextmenu/1.4.0/leaflet.contextmenu.min.js"></script>
+    <script src="{% static 'js/openData.js' %}"></script>
+    <script>
+        function setActiveStep(index) {
+            var steps = document.getElementsByClassName('step');
+            for (var i = 0; i < steps.length; i++) {
+                steps[i].classList.remove('active-step');
+            }
+            steps[index].classList.add('active-step');
+
+            var contents = document.getElementsByClassName('content');
+            for (var i = 0; i < contents.length; i++) {
+                contents[i].classList.remove('active-content');
+            }
+            document.getElementById('content-' + index).classList.add('active-content');
+        }
+    </script>
+{% endblock %}
+</title>
+</head>
+<body>
+
+</body>
+</html>

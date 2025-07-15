@@ -1,0 +1,716 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="{% static 'images/logo.png' %}">
+    <link href="{% static 'css/dependencies/bootstrap.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/allCss.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <title>پنل گزارش مدیریتی</title>
+    <style>
+        @font-face {
+            font-family: 'yekan';
+            src: url('{% static "fonts/BYekan+.ttf" %}') format('truetype'),
+            url('{% static "fonts/BYekanBold.ttf" %}') format('truetype');
+        }
+
+        body {
+            font-family: 'yekan', sans-serif;
+            margin: 0;
+            padding: 0;
+            direction: rtl;
+            background-color: #f8f9fa;
+        }
+
+        h3, input, h4 {
+            font-family: 'yekan', sans-serif;
+        }
+
+        canvas {
+            min-width: 1200px;
+        }
+
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-container input {
+            border-radius: 5px;
+        }
+
+        .search-container button {
+            border-radius: 5px;
+        }
+
+        #chartContainer {
+            width: 30%;
+            height: 400px;
+        }
+
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        #chartContainer {
+            width: 100%;
+            height: auto;
+            overflow-x: auto;
+        }
+
+        canvas {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .navbar-glass {
+            backdrop-filter: blur(10px);
+            background-color: rgba(75, 137, 255, 0.5);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            color: white; /* رنگ متن */
+        }
+    </style>
+</head>
+<body>
+
+<div style="margin-top: 10px">
+    <h4 class="text-center mt-0">نمودار کلی واحدها</h4>
+    <div class="card mb-4 p-1 margin-right-5 margin-left-5" style="height: 90vh; overflow-y: scroll">
+        <div class="card-body">
+            <div class="search-container text-center">
+                <input class="form-control form-control-sm d-inline-block w-25" type="text" id="searchInput"
+                       placeholder="نام واحد را جستجو کنید...">
+                <button id="resetZoom" class="btn btn-sm btn-primary">بازنشانی زوم</button>
+                <button id="toggleChartType" class="btn btn-sm btn-warning">تغییر نوع نمودار</button>
+                <button id="chartToExcel" class="btn btn-sm btn-success">تبدیل به اکسل</button>
+                <button id="chartToImage" class="btn btn-sm btn-info">ذخیره تصویر</button>
+                <button id="convertToPercentage" class="btn btn-sm btn-secondary">نمایش درصدی</button>
+                <select id="legendPosition" class="form-control form-control-sm d-inline-block w-auto">
+                    <option value="top">بالا</option>
+                    <option value="bottom">پایین</option>
+                    <option value="left">چپ</option>
+                    <option value="right">راست</option>
+                </select>
+            </div>
+            <div id="chartContainer" class="mt-3">
+                <canvas id="barChart"></canvas>
+            </div>
+
+            <div class="table-responsive mt-4">
+                <input class="form-control form-control-sm mb-2" type="text" id="tableSearchInput"
+                       placeholder="جستجو در جدول...">
+                <table class="table table-striped table-bordered table-hover">
+                    <thead class="thead-dark">
+                    <tr>
+                        <th>واحد</th>
+                        <th>نوع</th>
+                        <th>تعداد</th>
+                        <th>مساحت (متر مربع)</th>
+                        <th>درصد از کل</th>
+                        <th>مشاهده</th>
+                    </tr>
+                    </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="ownerTypeChartsContainer"></div>
+</div>
+<script>
+    function scrollToChart(chartId) {
+        const chartElement = document.getElementById(chartId);
+        if (chartElement) {
+            chartElement.scrollIntoView({behavior: 'smooth', block: 'center'});
+        }
+    }
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.2/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
+<script>
+    const colors = ['#FF5733', '#33FF57', '#3357FF', '#3357FF'];
+    var data = {{ ownerType | safe }};
+    const counts = {};
+    const areas = {};
+    data.forEach(group => {
+        group.forEach(item => {
+            const key = `${item.vahed}-${item.ownerType}`;
+            counts[key] = (counts[key] || 0) + 1;
+            areas[key] = (areas[key] || 0) + item.geometryArea;
+        });
+    });
+    const labels = [...new Set(data.flat().map(item => item.vahed))];
+    const ownerTypes = [...new Set(data.flat().map(item => item.ownerType))];
+    let barChart;
+    let chartType = 'bar';
+    let displayPercentage = false;
+    const generateBrightColor = () => {
+        const hue = Math.floor(Math.random() * 360);
+        const saturation = Math.floor(Math.random() * 30) + 70;
+        const lightness = Math.floor(Math.random() * 30) + 40;
+        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    };
+    const createChart = (filteredLabels, currentChartType) => {
+        const totalCounts = filteredLabels.reduce((sum, vahed) => {
+            ownerTypes.forEach(type => {
+                sum += counts[`${vahed}-${type}`] || 0;
+            });
+            return sum;
+        }, 0);
+
+        const datasets = ownerTypes.map(type => {
+            const datasetData = filteredLabels.map(vahed => counts[`${vahed}-${type}`] || 0);
+            const datasetAreas = filteredLabels.map(vahed => areas[`${vahed}-${type}`] || 0);
+
+            const percentageData = displayPercentage && totalCounts > 0 ?
+                datasetData.map(count => ((count / totalCounts) * 100).toFixed(2)) : null;
+
+            if (datasetData.some(value => value > 0)) {
+                const backgroundColor = generateBrightColor();
+                return {
+                    label: type,
+                    data: displayPercentage ? percentageData : datasetData,
+                    backgroundColor: backgroundColor,
+                    areas: datasetAreas
+                };
+            }
+            return null;
+        }).filter(dataset => dataset !== null);
+
+        if (barChart) {
+            barChart.destroy();
+        }
+
+        const ctx = document.getElementById('barChart').getContext('2d');
+
+        const selectedLegendPosition = document.getElementById('legendPosition').value;
+
+        barChart = new Chart(ctx, {
+            type: currentChartType,
+            data: {
+                labels: filteredLabels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: currentChartType === 'bar' ? {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'واحدها'
+                        },
+                        ticks: {
+                            maxBarThickness: 5,
+                            autoSkip: false,
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: displayPercentage ? 'درصد' : 'تعداد'
+                        },
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function (value) {
+                                return displayPercentage ? value + '%' : value;
+                            }
+                        }
+                    }
+                } : {},
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                const dataset = context.dataset;
+                                const index = context.dataIndex;
+                                const ownerType = dataset.label;
+                                const count = counts[`${filteredLabels[index]}-${ownerType}`] || 0;
+                                const area = dataset.areas[index];
+                                const percentage = displayPercentage && totalCounts > 0 ?
+                                    ((count / totalCounts) * 100).toFixed(2) + '%' : '';
+                                return `نوع: ${ownerType} | ${displayPercentage ? 'درصد:' : 'تعداد:'} ${displayPercentage ? percentage : count} | مساحت: ${area} متر مربع`;
+                            }
+                        }
+                    },
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'xy',
+                        },
+                        zoom: {
+                            wheel: {
+                                enabled: true,
+                                speed: 0.1,
+                            },
+                            pinch: {
+                                enabled: true,
+                            },
+                            mode: 'xy',
+                        }
+                    },
+                    legend: {
+                        position: selectedLegendPosition
+                    }
+                }
+            }
+        });
+        createTable(filteredLabels);
+    };
+    const createTable = (filteredLabels) => {
+        const tableBody = document.getElementById('dataTableBody');
+        if (!tableBody) return;
+
+        tableBody.innerHTML = '';
+
+        let totalTableCount = 0;
+        filteredLabels.forEach(vahed => {
+            ownerTypes.forEach(type => {
+                totalTableCount += counts[`${vahed}-${type}`] || 0;
+            });
+        });
+
+        ownerTypes.forEach(type => {
+            filteredLabels.forEach(vahed => {
+                const count = counts[`${vahed}-${type}`] || 0;
+                const area = areas[`${vahed}-${type}`] || 0;
+
+                if (count > 0) {
+                    const row = tableBody.insertRow();
+                    row.insertCell().textContent = vahed;
+                    row.insertCell().textContent = type;
+                    row.insertCell().textContent = count;
+                    const formattedArea = (area % 1 === 0) ? area.toString() : area.toFixed(2);
+                    row.insertCell().textContent = formattedArea;
+
+                    const percentage = totalTableCount > 0 ? ((count / totalTableCount) * 100).toFixed(2) : 0;
+                    row.insertCell().textContent = `${percentage}%`;
+                }
+            });
+        });
+    };
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+        const searchTerm = e.target.value.trim();
+        const filteredLabels = labels.filter(vahed => vahed.toLowerCase().includes(searchTerm.toLowerCase()));
+        createChart(filteredLabels, chartType);
+    });
+    document.getElementById('resetZoom').addEventListener('click', () => {
+        if (barChart) {
+            barChart.resetZoom();
+        }
+    });
+    document.getElementById('toggleChartType').addEventListener('click', () => {
+        chartType = (chartType === 'bar') ? 'pie' : 'bar';
+        createChart(labels, chartType);
+    });
+    document.getElementById('chartToExcel').addEventListener('click', () => {
+        const excelData = [];
+        excelData.push(['واحد', 'نوع', 'تعداد', 'مساحت (متر مربع)', 'درصد از کل']);
+
+        let totalExcelCount = 0;
+        labels.forEach(vahed => {
+            ownerTypes.forEach(type => {
+                totalExcelCount += counts[`${vahed}-${type}`] || 0;
+            });
+        });
+
+        ownerTypes.forEach(type => {
+            labels.forEach(vahed => {
+                const count = counts[`${vahed}-${type}`] || 0;
+                const area = areas[`${vahed}-${type}`] || 0;
+                const percentage = totalExcelCount > 0 ? ((count / totalExcelCount) * 100).toFixed(2) : 0;
+                excelData.push([vahed, type, count, area.toFixed(2), `${percentage}%`]);
+            });
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(excelData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Data');
+        XLSX.writeFile(wb, 'chart_data.xlsx');
+    });
+    document.getElementById('chartToImage').addEventListener('click', () => {
+        const canvas = document.getElementById('barChart');
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const tempCtx = tempCanvas.getContext('2d');
+
+        tempCtx.fillStyle = 'white';
+        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+        tempCtx.drawImage(canvas, 0, 0);
+
+        const link = document.createElement('a');
+        link.href = tempCanvas.toDataURL('image/png');
+        link.download = 'chart_image.png';
+        link.click();
+    });
+    document.getElementById('convertToPercentage').addEventListener('click', () => {
+        displayPercentage = !displayPercentage;
+        createChart(labels, chartType);
+    });
+    document.getElementById('legendPosition').addEventListener('change', () => {
+        createChart(labels, chartType);
+    });
+    document.getElementById('tableSearchInput').addEventListener('input', (e) => {
+        const searchTerm = e.target.value.trim().toLowerCase();
+        const tableBody = document.getElementById('dataTableBody');
+        if (!tableBody) return;
+        Array.from(tableBody.rows).forEach(row => {
+            let rowMatches = false;
+            Array.from(row.cells).forEach(cell => {
+                if (cell.textContent.toLowerCase().includes(searchTerm)) {
+                    rowMatches = true;
+                }
+            });
+            row.style.display = rowMatches ? '' : 'none';
+        });
+    });
+    createChart(labels, chartType);
+
+    // ---------------------------------------------------------
+(function () {
+    // تنظیمات فونت پیش‌فرض برای نمودارها
+    if (Chart.defaults.font) {
+        Chart.defaults.font.family = 'yekan';
+        Chart.defaults.font.size = 14;
+        Chart.defaults.font.weight = 'normal';
+    } else {
+        Chart.defaults.font = {
+            family: 'yekan',
+            size: 14,
+            weight: 'normal'
+        };
+    }
+
+    const ownerTypeData = {{ ownerType | safe }};
+    const countsByOwnerType = {};
+    const areasByOwnerType = {};
+
+    // تجمیع داده‌ها بر اساس نوع مالک و واحد
+    ownerTypeData.forEach(group => {
+        group.forEach(item => {
+            const key = `${item.vahed}-${item.ownerType}`;
+            countsByOwnerType[key] = (countsByOwnerType[key] || 0) + 1;
+            areasByOwnerType[key] = (areasByOwnerType[key] || 0) + item.geometryArea;
+        });
+    });
+
+    const allOwnerTypes = [...new Set(ownerTypeData.flat().map(item => item.ownerType))];
+    let container = document.getElementById('ownerTypeChartsContainer');
+
+    if (!container) {
+        console.error("Element with ID 'ownerTypeChartsContainer' not found. Appending to body.");
+        container = document.createElement('div');
+        container.id = 'ownerTypeChartsContainer';
+        document.body.appendChild(container);
+    }
+
+    container.innerHTML = '';
+
+    const createTable = (ownerType, filteredVaheds, tableBodyId, chartInstance, currentZoomedVahedRef) => {
+        const tableBody = document.getElementById(tableBodyId);
+        if (!tableBody) return;
+
+        tableBody.innerHTML = '';
+        let totalTableCount = filteredVaheds.reduce((acc, vahed) =>
+            acc + (countsByOwnerType[`${vahed}-${ownerType}`] || 0), 0);
+
+        filteredVaheds.forEach(vahed => {
+            const count = countsByOwnerType[`${vahed}-${ownerType}`] || 0;
+            const area = areasByOwnerType[`${vahed}-${ownerType}`] || 0;
+            if (count > 0) {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = vahed;
+                row.insertCell().textContent = ownerType;
+                row.insertCell().textContent = count;
+                row.insertCell().textContent = (area % 1 === 0) ? area : area.toFixed(2);
+                row.insertCell().textContent = totalTableCount > 0 ? ((count / totalTableCount) * 100).toFixed(2) + '%' : '0%';
+
+                const viewCell = row.insertCell();
+                viewCell.innerHTML = `
+                    <svg class="zoom-icon" data-vahed="${vahed}" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer;">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>`;
+
+                viewCell.querySelector('.zoom-icon').addEventListener('click', (event) => {
+                    const clickedVahed = event.currentTarget.dataset.vahed;
+                    const vahedIndex = chartInstance.data.labels.indexOf(clickedVahed);
+                    if (chartInstance && vahedIndex !== -1) {
+                        if (currentZoomedVahedRef.value === clickedVahed) {
+                            chartInstance.resetZoom();
+                            currentZoomedVahedRef.value = null;
+                        } else {
+                            chartInstance.zoomScale('x', {
+                                min: vahedIndex - 0.5,
+                                max: vahedIndex + 0.5
+                            });
+                            currentZoomedVahedRef.value = clickedVahed;
+                        }
+                        chartInstance.canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+            }
+        });
+    };
+
+    allOwnerTypes.forEach((ownerType, index) => {
+        const vahedData = ownerTypeData.flat().filter(item => item.ownerType === ownerType);
+        const vahedsForOwnerType = [...new Set(vahedData.map(item => item.vahed))];
+        let currentFilteredVaheds = vahedsForOwnerType.filter(vahed => countsByOwnerType[`${vahed}-${ownerType}`] > 0);
+        if (currentFilteredVaheds.length === 0) return;
+
+        let dataCounts = currentFilteredVaheds.map(vahed => countsByOwnerType[`${vahed}-${ownerType}`] || 0);
+        let dataAreas = currentFilteredVaheds.map(vahed => areasByOwnerType[`${vahed}-${ownerType}`] || 0);
+        let colors = currentFilteredVaheds.map(() => `#${Math.floor(Math.random() * 16777215).toString(16)}`);
+
+        const canvasId = `ownerTypeChart-${index}`;
+        const chartContainerId = `ownerTypeChartContainer-${index}`;
+        const searchBoxId = `searchBox-${index}`;
+        const downloadImageId = `downloadImage-${index}`;
+        const toggleChartTypeId = `toggleChartType-${index}`;
+        const downloadExcelId = `downloadExcel-${index}`;
+        const legendPositionId = `legendPosition-${index}`;
+        const tableSearchInputId = `tableSearchInput-${index}`;
+        const dataTableBodyId = `dataTableBody-${index}`;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'card mb-4 p-1 margin-right-5 margin-left-5';
+        wrapper.style.height = '90vh';
+        wrapper.style.marginBottom = '40px';
+        wrapper.style.overflowY = 'scroll';
+
+        wrapper.innerHTML = `
+            <div class="card-body">
+                <h3 style="text-align:center; margin-bottom:20px;">نوع: ${ownerType}</h3>
+                <div class="search-container text-center" id="${chartContainerId}">
+                    <input class="form-control form-control-sm d-inline-block w-25" type="text" id="${searchBoxId}" placeholder="نام واحد را جستجو کنید...">
+                    <button class="btn btn-sm btn-primary" id="${toggleChartTypeId}">تغییر نوع نمودار</button>
+                    <button class="btn btn-sm btn-success" id="${downloadExcelId}">دانلود اکسل</button>
+                    <button class="btn btn-sm btn-info" id="${downloadImageId}">ذخیره تصویر</button>
+                    <select id="${legendPositionId}" class="form-control form-control-sm d-inline-block w-auto">
+                        <option value="top">بالا</option>
+                        <option value="bottom">پایین</option>
+                        <option value="left">چپ</option>
+                        <option value="right">راست</option>
+                    </select>
+                    <canvas id="${canvasId}" style="max-height:400px;"></canvas>
+                </div>
+                <div class="table-responsive mt-4">
+                    <input class="form-control form-control-sm mb-2" type="text" id="${tableSearchInputId}" placeholder="جستجو در جدول...">
+                    <table class="table table-striped table-bordered table-hover">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>واحد</th>
+                                <th>نوع</th>
+                                <th>تعداد</th>
+                                <th>مساحت (متر مربع)</th>
+                                <th>درصد از کل</th>
+                                <th>مشاهده</th>
+                            </tr>
+                        </thead>
+                        <tbody id="${dataTableBodyId}"></tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        container.appendChild(wrapper);
+
+        let chartType = 'bar';
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        let chart;
+        let currentZoomedVahed = { value: null };
+
+        const renderChart = (labels, data, areas, colors, type, legendPos) => {
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `تعداد واحدها برای ${ownerType}`,
+                        data: data,
+                        backgroundColor: colors,
+                        areas: areas,
+                        barPercentage: 1,
+                        categoryPercentage: 1,
+                        borderWidth: 1,
+                        maxBarThickness: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: type === 'bar' ? {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'واحدها',
+                                font: { family: 'yekan', size: 14 }
+                            },
+                            ticks: {
+                                font: { family: 'yekan', size: 12 },
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'تعداد',
+                                font: { family: 'yekan', size: 14 }
+                            },
+                            beginAtZero: true,
+                            ticks: {
+                                font: { family: 'yekan', size: 12 }
+                            }
+                        }
+                    } : {},
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: context => {
+                                    const dataset = context.dataset;
+                                    const index = context.dataIndex;
+                                    return `تعداد: ${dataset.data[index]} | مساحت: ${dataset.areas[index].toFixed(2)} متر مربع`;
+                                }
+                            },
+                            titleFont: { family: 'yekan', size: 14 },
+                            bodyFont: { family: 'yekan', size: 12 }
+                        },
+                        datalabels: type === 'bar' ? {
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: Math.round,
+                            font: { family: 'yekan', size: 12, weight: 'bold' }
+                        } : false,
+                        legend: {
+                            position: legendPos,
+                            labels: { font: { family: 'yekan', size: 12 } }
+                        },
+                        zoom: {
+                            pan: { enabled: true, mode: 'xy' },
+                            zoom: {
+                                wheel: { enabled: true, speed: 0.1 },
+                                pinch: { enabled: true },
+                                mode: 'xy'
+                            }
+                        }
+                    }
+                }
+            });
+
+            currentZoomedVahed.value = null;
+            createTable(ownerType, labels, dataTableBodyId, chart, currentZoomedVahed);
+        };
+
+        renderChart(currentFilteredVaheds, dataCounts, dataAreas, colors, chartType, document.getElementById(legendPositionId).value);
+
+        // رویدادهای کلیک و ورودی‌ها
+        document.getElementById(toggleChartTypeId).addEventListener('click', () => {
+            chartType = (chartType === 'bar') ? 'pie' : 'bar';
+            renderChart(currentFilteredVaheds, dataCounts, dataAreas, colors, chartType, document.getElementById(legendPositionId).value);
+        });
+
+        document.getElementById(downloadExcelId).addEventListener('click', () => {
+            const rows = [['واحد', 'نوع', 'تعداد', 'مساحت (متر مربع)', 'درصد از کل']];
+            const totalCount = vahedsForOwnerType.reduce((acc, vahed) =>
+                acc + (countsByOwnerType[`${vahed}-${ownerType}`] || 0), 0);
+
+            vahedsForOwnerType.forEach(vahed => {
+                const count = countsByOwnerType[`${vahed}-${ownerType}`] || 0;
+                const area = areasByOwnerType[`${vahed}-${ownerType}`] || 0;
+                const percentage = totalCount ? ((count / totalCount) * 100).toFixed(2) : 0;
+                rows.push([vahed, ownerType, count, area.toFixed(2), `${percentage}%`]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Data');
+            XLSX.writeFile(wb, `${ownerType}_chart_data.xlsx`);
+        });
+
+        document.getElementById(downloadImageId).addEventListener('click', async () => {
+            const canvas = chart.canvas;
+            const tableElement = document.getElementById(dataTableBodyId).closest('table');
+            if (!tableElement) return alert("جدول یافت نشد!");
+
+            const colIndexToRemove = 5;
+            const headerCells = tableElement.querySelectorAll('thead tr th');
+            if (headerCells[colIndexToRemove]) headerCells[colIndexToRemove].style.display = 'none';
+            tableElement.querySelectorAll('tbody tr').forEach(row => {
+                if (row.cells[colIndexToRemove]) row.cells[colIndexToRemove].style.display = 'none';
+            });
+
+            const tableCanvas = await html2canvas(tableElement, { backgroundColor: '#ffffff' });
+
+            if (headerCells[colIndexToRemove]) headerCells[colIndexToRemove].style.display = '';
+            tableElement.querySelectorAll('tbody tr').forEach(row => {
+                if (row.cells[colIndexToRemove]) row.cells[colIndexToRemove].style.display = '';
+            });
+
+            const outputCanvas = document.createElement('canvas');
+            const width = Math.max(canvas.width, tableCanvas.width);
+            const height = canvas.height + tableCanvas.height + 20;
+            outputCanvas.width = width;
+            outputCanvas.height = height;
+
+            const ctxOut = outputCanvas.getContext('2d');
+            ctxOut.fillStyle = 'white';
+            ctxOut.fillRect(0, 0, width, height);
+
+            const chartImage = new Image();
+            chartImage.src = canvas.toDataURL('image/png');
+            await new Promise(res => chartImage.onload = res);
+
+            ctxOut.drawImage(chartImage, 0, 0);
+            ctxOut.drawImage(tableCanvas, 0, canvas.height + 20);
+
+            const link = document.createElement('a');
+            link.href = outputCanvas.toDataURL('image/png');
+            link.download = `${ownerType}_chart_with_table.png`;
+            link.click();
+        });
+
+        document.getElementById(searchBoxId).addEventListener('input', function (event) {
+            const searchTerm = event.target.value.toLowerCase();
+            const filtered = vahedsForOwnerType.filter(vahed => vahed.toLowerCase().includes(searchTerm));
+            const filteredCounts = filtered.map(vahed => countsByOwnerType[`${vahed}-${ownerType}`] || 0);
+            const filteredAreas = filtered.map(vahed => areasByOwnerType[`${vahed}-${ownerType}`] || 0);
+            const filteredColors = filtered.map(() => `#${Math.floor(Math.random() * 16777215).toString(16)}`);
+            renderChart(filtered, filteredCounts, filteredAreas, filteredColors, chartType, document.getElementById(legendPositionId).value);
+        });
+
+        document.getElementById(legendPositionId).addEventListener('change', () => {
+            renderChart(currentFilteredVaheds, dataCounts, dataAreas, colors, chartType, document.getElementById(legendPositionId).value);
+        });
+
+        document.getElementById(tableSearchInputId).addEventListener('input', (e) => {
+            const search = e.target.value.trim().toLowerCase();
+            const tbody = document.getElementById(dataTableBodyId);
+            Array.from(tbody.rows).forEach(row => {
+                const match = Array.from(row.cells).some(cell => cell.textContent.toLowerCase().includes(search));
+                row.style.display = match ? '' : 'none';
+            });
+        });
+    });
+})();
+
+
+</script>
+</body>
+</html>

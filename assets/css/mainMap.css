@@ -1,0 +1,41 @@
+html {
+    height: 90%;
+}
+
+body {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
+}
+
+.container1 {
+    display: flex;
+    height: 98vh;
+}
+
+.column {
+    flex: 1;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+    overflow: auto;
+    border-radius: 10px;
+}
+
+.resizer {
+    background: transparent;
+    width: 5px;
+    cursor: ew-resize;
+    position: relative;
+}
+
+.navbar {
+    height: 40px;
+}
+
+.navbar a {
+    font-size: 12px;
+}
+
+

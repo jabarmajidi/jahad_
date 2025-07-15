@@ -1,0 +1,14 @@
+# Ignore Django migrations
+**/migrations/
+!**/migrations/__init__.py
+
+# Ignore common Python files
+*.pyc
+__pycache__/
+
+# Ignore virtualenv
+venv/
+env/
+
+# Ignore IDE files
+.idea/
