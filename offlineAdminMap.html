@@ -1882,11 +1882,11 @@
     </div>
 
     <div id="exportPDF"></div>
-
 {% endblock %}
 
 {% block script %}
     <script src="{% static 'js/new/Leaflet.Editable.js' %}"></script>
+    <script src="{% static 'js/new/chartjs-plugin-zoom.js' %}"></script>
     <script>
         function deleteUpdate(updateId) {
             Swal.fire({

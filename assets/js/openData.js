@@ -573,12 +573,23 @@ function openDocumentDetail(docId) {
                             img.style.maxWidth = "100%";
                             contentDiv.appendChild(img);
                         } else if (fileExtension === 'pdf') {
+                            const contentDiv = document.getElementById("content");
+                            const loader = document.createElement('div');
+                            loader.innerText = 'در حال بارگذاری...';
+                            loader.style.textAlign = 'center';
+                            loader.style.padding = '20px';
+                            contentDiv.appendChild(loader);
                             const iframe = document.createElement('iframe');
-                            iframe.src = url;
+                            const pdfUrl = `http://185.213.164.61/media/documents/downloaded_file_ei5j2Zq.pdf`;
+                            iframe.src = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
                             iframe.style.width = "100%";
                             iframe.style.height = "600px";
-                            iframe.style.border = "none";
-                            contentDiv.appendChild(iframe);
+                            iframe.frameBorder = "0";
+                            iframe.onload = () => {
+                                loader.remove();
+                                contentDiv.appendChild(iframe);
+                            };
+
                         } else {
                             contentDiv.textContent = "فرمت فایل پشتیبانی نمی‌شود.";
                         }
