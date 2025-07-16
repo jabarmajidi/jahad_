@@ -19,6 +19,11 @@ class GeoData(models.Model):
     def __str__(self):
         return self.property['ostan'] + " | " + self.property['onvan'] + ' | ' + self.property['vahed']
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['main_geo']),
+        ]
+
 class MainBookmark(models.Model):
     name = models.CharField(max_length= 100)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -26,11 +31,21 @@ class MainBookmark(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['user']),
+        ]
+
 class BookmarkGeo(models.Model):
     bookmark = models.ForeignKey(MainBookmark, on_delete=models.CASCADE, blank=True, null=True)
     geom = models.GeometryField()
     property = models.JSONField(blank=True, null=True)
     image = models.ImageField(blank=True, null=True, upload_to='sardar')
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['bookmark']),
+        ]
 
 
 class IranData(models.Model):
@@ -60,6 +75,11 @@ class Changes(models.Model):
     new_value = models.TextField()
     date = models.DateTimeField(auto_now_add=True)
     approved = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['geo_data', 'approved'])
+        ]
 
     def __str__(self):
         return self.user.username + ' | ' + self.key
@@ -108,3 +128,8 @@ class UserComments(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     geo = models.ForeignKey(GeoData, on_delete=models.CASCADE)
     text = models.TextField()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'geo']),
+        ]

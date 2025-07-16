@@ -5,8 +5,3 @@ function openLayerCanvas() {
     const bsCanvas = bootstrap.Offcanvas.getInstance(layerOffCanvas) || new bootstrap.Offcanvas(layerOffCanvas);
     bsCanvas.show();
 }
-
-addGroupLayerWithFeatures(allGeometry.features, false, allGeometry.features[0].properties.mainName)
-for (var i = 0; i < allBookmarkes.length; i++) {
-    addGroupLayerWithFeatures(allBookmarkes[i].features, false, allBookmarkes[i].name)
-}

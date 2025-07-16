@@ -28,4 +28,7 @@ urlpatterns = [
     path('upload-document', upload_document),
     path('search-property/', search_property, name='search-property'),
     path('update-geometry', update_geometry),
+    path('api/geodata/', geojson_api, name='geojson_api'),
+    path('api/iran/', iran_geojson_api, name='iran_geojson_api'),
+    path('api/bookmarks/', bookmarks_api, name='bookmarks_api'),
 ]

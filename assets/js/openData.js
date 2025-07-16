@@ -1,135 +1,3 @@
-function addAllFeaturesIran() {
-    markerGroup.clearLayers();
-
-    const style = {
-        color: '#3388ff',
-        weight: 1.3,
-        opacity: 1,
-        fillColor: '#3388ff',
-        fillOpacity: 0.1
-    };
-
-    allIranGeometry.features.forEach(feature => {
-        const layer = L.geoJSON(feature, {style: style}).addTo(map);
-        layer.on('click', function () {
-            const jahadFeatures = [];
-            const ostanName = feature.name;
-            allGeometry.features.forEach(f => {
-                const layerOstan = f.properties.ostan;
-                if (ostanName === layerOstan) {
-                    jahadFeatures.push(f);
-                }
-            });
-            markerGroup.clearLayers();
-            const geojson = {
-                type: 'FeatureCollection',
-                features: jahadFeatures
-            };
-            L.geoJSON(geojson, {
-                onEachFeature: function (feature, layer) {
-                    window.selectedLayer = layer;
-                    const center = layer.getBounds().getCenter();
-                    const lat = center.lat;
-                    const lng = center.lng;
-                    const category = feature.properties.tmelk;
-                    const icon = icons[category] || icons['default'];
-                    const marker = L.marker(center, {icon: icon}).addTo(markerGroup);
-                    const name = layer.feature.properties['onvan'];
-                    const dbId = layer.feature.properties.dbId;
-                    const bounds = layer.getBounds();
-                    const area = layer.feature.properties['arse'];
-                    const newArea = Number.parseInt(area).toLocaleString('en-US');
-                    const imageLink = layer.feature.properties['sardar'].replace('http://localhost:8088',
-                        'http://185.213.164.61');
-                    layer.on('click', function () {
-                        window.selectedLayer = layer;  // اینجا لایه رو ذخیره می‌کنیم برای استفاده در تابع enablePolygonEditFromClick
-
-                        const toolContent = `
-                        <img src="${imageLink}" class="rounded" alt="سردر" width="100%" style="max-height: 300px">
-                        <div class="tool-container text-right" dir="rtl">
-                            <h6>${name}</h6>
-                            <div class="tool-list justify-content-around text-center d-flex">
-                                <div onclick="openLayerComment(${dbId})"  class="pointerCursor p-1 border border-secondary rounded m-1">
-                                    <img src="${downloadSVG}" width="40px" alt="">
-                                    <br>
-                                    <small>یادداشت</small>
-                                </div>
-                                <div class="pointerCursor p-1 border border-secondary rounded m-1" onclick="printLayerDetails(${dbId}, '${lat}', '${lng}')">
-                                    <img src="${detailSVG}" width="40px" alt="">
-                                    <br>
-                                    <small>جزئیات</small>
-                                </div>
-                                <div class="pointerCursor p-1 border border-secondary rounded m-1" onclick="openLayerDocuments(${dbId})">
-                                    <img src="${documentSVG}" width="40px" alt="">
-                                    <br>
-                                    <small>اسناد</small>
-                                </div>
-                                <div onclick="enablePolygonEditFromClick()" class="pointerCursor p-1 border border-secondary rounded m-1">
-                                    <img src="${editPolygonSVG}" width="40px" alt=""><br>
-                                    <small>ویرایش</small>
-                                </div>
-                            </div>
-                            <div class="text-center mt-2">
-                                <small>مساحت: ${newArea} متر مربع</small>
-                            </div>
-                        </div>`;
-
-                        const popupLatLng = L.latLng(center.lat + 0.0001, center.lng);
-                        L.popup()
-                            .setLatLng(popupLatLng)
-                            .setContent(toolContent)
-                            .openOn(map);
-                    });
-
-
-                    marker.on('click', function () {
-                        map.flyToBounds(bounds, {
-                            padding: [200, 200],
-                            duration: 3
-                        }).once('zoomend', function () {
-                            const currentZoom = map.getZoom();
-                            if (currentZoom > 15) {
-                                const popupLatLng = L.latLng(center.lat + 0.0001, center.lng);
-                                L.popup()
-                                    .setLatLng(popupLatLng)
-                                    .setContent(`
-                                        <img src="${imageLink}" class="rounded" alt="سردر" width="100%" style="max-height: 300px">
-                                        <div class="tool-container text-right" dir="rtl">
-                                            <h6>${name}</h6>
-                                            <div class="tool-list justify-content-around text-center d-flex">
-                                                <div onclick="openLayerComment(${dbId})" class="pointerCursor p-1 border border-secondary rounded m-1">
-                                                    <img src="${downloadSVG}" width="40px" alt="">
-                                                    <br>
-                                                    <small>یادداشت</small>
-                                                </div>
-                                                <div class="pointerCursor p-1 border border-secondary rounded m-1" onclick="printLayerDetails(${dbId}, '${lat}', '${lng}')">
-                                                    <img src="${detailSVG}" width="40px" alt="">
-                                                    <br>
-                                                    <small>جزئیات</small>
-                                                </div>
-                                                <div class="pointerCursor p-1 border border-secondary rounded m-1" onclick="openLayerDocuments(${dbId})">
-                                                    <img src="${documentSVG}" width="40px" alt="">
-                                                    <br>
-                                                    <small>اسناد</small>
-                                                </div>
-                                            </div>
-                                            <div class="text-center mt-2">
-                                                <small>مساحت: ${newArea} متر مربع</small>
-                                            </div>
-                                        </div>`)
-                                    .openOn(map);
-                            }
-                        });
-                    });
-                }
-            }).addTo(markerGroup);
-        });
-    });
-}
-
-window.addEventListener('load', function () {
-    addAllFeaturesIran();
-});
 
 function closeLayerDetail() {
     col3.classList.add('d-none');
@@ -139,9 +7,9 @@ function closeLayerDetail() {
 
 function printLayerDetails(index, lat, lng) {
     let properties;
-    for (var i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === index) {
-            properties = allData.features[i].properties
+    for (var i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === index) {
+            properties = allGeometry.features[i].properties
         }
     }
     var name = properties.onvan
@@ -235,9 +103,9 @@ var selectedGeoFromUploadDocument = 0;
 
 function openLayerDocuments(index) {
     let properties;
-    for (var i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === index) {
-            properties = allData.features[i].properties
+    for (var i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === index) {
+            properties = allGeometry.features[i].properties
         }
     }
     var dbId = properties['dbId']
@@ -376,9 +244,9 @@ function uploadDocument() {
 
 function downloadToKML1(index, name) {
     let feature;
-    for (var i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === index) {
-            feature = allData.features[i]
+    for (var i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === index) {
+            feature = allGeometry.features[i]
         }
     }
 
@@ -414,9 +282,9 @@ var editingCommentId = 0;
 
 function openLayerComment(index) {
     let properties;
-    for (var i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === index) {
-            properties = allData.features[i].properties
+    for (var i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === index) {
+            properties = allGeometry.features[i].properties
         }
     }
     editingCommentId = properties['dbId']
@@ -455,9 +323,9 @@ function openLayerComment(index) {
                     Swal.close()
                     if (data['check']) {
                         modal.hide()
-                        for (var i = 0; i < allData.features.length; i++) {
-                            if (allData.features[i].properties['dbId'] === index) {
-                                allData.features[i].properties['comment'] = newCommentText
+                        for (var i = 0; i < allGeometry.features.length; i++) {
+                            if (allGeometry.features[i].properties['dbId'] === index) {
+                                allGeometry.features[i].properties['comment'] = newCommentText
                             }
                         }
                         showTimerGreenAlert('یادداشت ویرایش شد', 2000)
@@ -513,9 +381,9 @@ function openLayerComment(index) {
                     Swal.close()
                     if (data['check']) {
                         modal.hide()
-                        for (var i = 0; i < allData.features.length; i++) {
-                            if (allData.features[i].properties['dbId'] === index) {
-                                allData.features[i].properties['ownerComment'] = ownerNewCommentText
+                        for (var i = 0; i < allGeometry.features.length; i++) {
+                            if (allGeometry.features[i].properties['dbId'] === index) {
+                                allGeometry.features[i].properties['ownerComment'] = ownerNewCommentText
                             }
                         }
                         showTimerGreenAlert('یادداشت ویرایش شد', 2000)
@@ -573,22 +441,13 @@ function openDocumentDetail(docId) {
                             img.style.maxWidth = "100%";
                             contentDiv.appendChild(img);
                         } else if (fileExtension === 'pdf') {
-                            const contentDiv = document.getElementById("content");
-                            const loader = document.createElement('div');
-                            loader.innerText = 'در حال بارگذاری...';
-                            loader.style.textAlign = 'center';
-                            loader.style.padding = '20px';
-                            contentDiv.appendChild(loader);
                             const iframe = document.createElement('iframe');
-                            const pdfUrl = `http://185.213.164.61/media/documents/downloaded_file_ei5j2Zq.pdf`;
+                            const pdfUrl = `http://185.213.164.61${url}`;
                             iframe.src = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
                             iframe.style.width = "100%";
                             iframe.style.height = "600px";
                             iframe.frameBorder = "0";
-                            iframe.onload = () => {
-                                loader.remove();
-                                contentDiv.appendChild(iframe);
-                            };
+                            contentDiv.appendChild(iframe);
 
                         } else {
                             contentDiv.textContent = "فرمت فایل پشتیبانی نمی‌شود.";
@@ -628,9 +487,9 @@ function zoomToLayer(lat, lng) {
 
 function editTableRowError(key, index) {
     let properties;
-    for (var i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === index) {
-            properties = allData.features[i].properties
+    for (var i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === index) {
+            properties = allGeometry.features[i].properties
         }
     }
     var dbId = properties.dbId
@@ -708,9 +567,9 @@ function editTableRowError(key, index) {
 
 function editTableRow(key, layerIndex) {
     let properties;
-    for (var i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === layerIndex) {
-            properties = allData.features[i].properties
+    for (var i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === layerIndex) {
+            properties = allGeometry.features[i].properties
         }
     }
     var newKey = persianName[key]
@@ -805,9 +664,9 @@ function editTableRow(key, layerIndex) {
 
 function getReports(index) {
     let properties;
-    for (var i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === index) {
-            properties = allData.features[i].properties
+    for (var i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === index) {
+            properties = allGeometry.features[i].properties
         }
     }
     reportModal.show()
@@ -910,10 +769,10 @@ let layersControl;
 function printFeature(index, title) {
     let properties;
     let feature;
-    for (var i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === index) {
-            properties = allData.features[i].properties
-            feature = allData.features[i]
+    for (var i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === index) {
+            properties = allGeometry.features[i].properties
+            feature = allGeometry.features[i]
         }
     }
     var mainSearchDiv = document.getElementById('searchDataPrintDiv')
@@ -988,9 +847,9 @@ async function findFeature(index) {
     var myOffcanvas = document.getElementById('closeLayerButton');
     myOffcanvas.click()
     let feature;
-    for (var i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === index) {
-            feature = allData.features[i];
+    for (var i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === index) {
+            feature = allGeometry.features[i];
             break;
         }
     }
@@ -1115,9 +974,9 @@ const list = Object.values(persianName);
 
 function filterList(index) {
     let properties;
-    for (var i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === parseInt(index)) {
-            properties = allData.features[i].properties
+    for (var i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === parseInt(index)) {
+            properties = allGeometry.features[i].properties
         }
     }
     var selectedKeyDiv = document.getElementById('selectedKey')

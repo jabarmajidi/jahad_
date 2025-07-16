@@ -203,9 +203,7 @@ const icons = {
         iconAnchor: [10, 10]
     })
 };
-let allData;
 
-allData = allGeometry;
 allIranData = allIranGeometry;
 let layer;
 
@@ -310,9 +308,9 @@ function arrayBufferToBase64(buffer) {
 
 async function downloadToExcel(index, name = '') {
     let properties;
-    for (let i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === index) {
-            properties = allData.features[i].properties;
+    for (let i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === index) {
+            properties = allGeometry.features[i].properties;
             break;
         }
     }
@@ -606,9 +604,9 @@ document.getElementById('search-btn').addEventListener('click', function () {
                     listItem.className = 'list-group-item pointerCursor';
                     listItem.onclick = function () {
                         let feature;
-                        for (var i = 0; i < allData.features.length; i++) {
-                            if (allData.features[i].properties['dbId'] === item.id) {
-                                feature = allData.features[i];
+                        for (var i = 0; i < allGeometry.features.length; i++) {
+                            if (allGeometry.features[i].properties['dbId'] === item.id) {
+                                feature = allGeometry.features[i];
                             }
                         }
                         const geojsonLayer = L.geoJSON(feature);
@@ -1250,9 +1248,9 @@ const layerOffCanvas = document.getElementById("layersOffCanvas");
 
 function zoomToFeature(index) {
     let feature;
-    for (var i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === parseInt(index)) {
-            feature = allData.features[i]
+    for (var i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === parseInt(index)) {
+            feature = allGeometry.features[i]
         }
     }
     const geojsonLayer = L.geoJSON(feature)
@@ -1798,9 +1796,9 @@ function toggleColumns() {
 async function exportGeoJSONToVerticalPDF(index, name = '') {
     showLoadingAlert("در حال پردازش اطلاعات");
     let properties;
-    for (let i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === index) {
-            properties = allData.features[i].properties;
+    for (let i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === index) {
+            properties = allGeometry.features[i].properties;
             break;
         }
     }
@@ -1890,9 +1888,9 @@ function convertToUTM(lat, lon) {
 async function exportGeoJSONToExcelLat(index) {
     showLoadingAlert("در حال پردازش اطلاعات");
     let properties;
-    for (let i = 0; i < allData.features.length; i++) {
-        if (allData.features[i].properties['dbId'] === index) {
-            properties = allData.features[i];
+    for (let i = 0; i < allGeometry.features.length; i++) {
+        if (allGeometry.features[i].properties['dbId'] === index) {
+            properties = allGeometry.features[i];
             break;
         }
     }
@@ -2126,6 +2124,15 @@ function addGroupLayerWithFeatures(geoJsonFeatures, showLayer, layerName, isBook
         downloadGeojsonToExcel(geoJsonFeatures, layerName)
     }
     option2.appendChild(option2Link);
+
+    var option21 = document.createElement('li');
+    var option21Link = document.createElement('a');
+    option21Link.className = 'dropdown-item text-end';
+    option21Link.innerText = 'geojson';
+    option21Link.onclick = function () {
+        downloadGeojsonFile(geoJsonFeatures, layerName)
+    }
+    option21.appendChild(option21Link);
 
     var option3 = document.createElement('li');
     var option3Link = document.createElement('a');
@@ -2488,6 +2495,7 @@ function addGroupLayerWithFeatures(geoJsonFeatures, showLayer, layerName, isBook
 
     dropdownMenu.appendChild(option1);
     dropdownMenu.appendChild(option2);
+    dropdownMenu.appendChild(option21);
     dropdownMenu.appendChild(option3);
     dropdownMenu.appendChild(option4);
     dropdownMenu.appendChild(option5);
@@ -2514,3 +2522,14 @@ document.getElementById('selectByAttributeModal').addEventListener('shown.bs.mod
     var bsOffcanvas = bootstrap.Offcanvas.getInstance(myOffcanvas);
     bsOffcanvas.hide();
 });
+
+function downloadGeojsonFile(geojson, fileName) {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojson));
+    const anchor = document.createElement('a');
+    anchor.setAttribute("href", dataStr);
+    anchor.setAttribute("download", fileName + ".geojson");
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+}
+

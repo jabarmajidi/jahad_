@@ -8,6 +8,7 @@ import requests
 from PIL import Image
 from django.contrib.gis.geos import GEOSGeometry
 from django.core.files.base import ContentFile
+from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
@@ -77,99 +78,103 @@ def main_map(request):
     #     geom = GEOSGeometry(json.dumps(feature['geometry']))
     #     new = IranData.objects.create(geom=geom)
 
-    all_bookmark = MainBookmark.objects.filter(user=request.user)
-    iran_data = IranData.objects.all()
-    features = []
-    bookmarks = []
-    iran = []
     province_list = []
     vahed_names = []
-    geodata = GeoData.objects.filter(main_geo=MainGeoData.objects.all().first())
-    for data in geodata:
-        editing_keys = Changes.objects.filter(geo_data=data, approved=False)
-        editing_keys_list = []
-        for edit in editing_keys:
-            editing_keys_list.append(edit.key)
-        properties = data.property
-        item = {
-            'name': properties['vahed'],
-            'ostan': properties['ostan']
-        }
-        if item not in vahed_names:
-            vahed_names.append(item)
-        if data.image:
-            properties['sardar'] = 'http://185.213.164.61' + data.image.url
-        else:
-            properties['sardar'] = ''
-        properties['editingList'] = editing_keys_list
-        if data.comment:
-            properties['comment'] = data.comment or ''
-        else:
-            properties['comment'] = ''
-        owner_comment = UserComments.objects.filter(user=request.user, geo=data)
-        properties['ownerComment'] = ''
-        properties['mainName'] = data.main_geo.name
-        properties['mainGeoData'] = data.main_geo.id
-        if owner_comment.exists():
-            properties['ownerComment'] = owner_comment.first().text
-        feature = {
-            "type": "Feature",
-            "geometry": json.loads(data.geom.geojson),
-            "properties": properties
-        }
-        features.append(feature)
-
-    for book in all_bookmark:
-        new_data = BookmarkGeo.objects.filter(bookmark=book)
-        all_books = []
-        for data in new_data:
-            properties = data.property
-            properties['comment'] = properties.get('comment') or ''
-            if data.image:
-                properties['sardar'] = 'http://185.213.164.61' + data.image.url
-            else:
-                properties['sardar'] = ''
-            properties['editingList'] = []
-            feature = {
-                "type": "Feature",
-                "geometry": json.loads(data.geom.geojson),
-                "properties": properties
-            }
-            all_books.append(feature)
-        geojson_data = {
-            'name': book.name,
-            "type": "FeatureCollection",
-            "features": all_books
-        }
-        bookmarks.append(geojson_data)
-
-    for data in iran_data:
-        feature = {
-            "type": "Feature",
-            "geometry": json.loads(data.geom.geojson),
-            "name": data.name
-        }
-        iran.append(feature)
-        province_list.append(data.name)
-    geojson_data = {
-        "type": "FeatureCollection",
-        "features": features,
-    }
-    iran_geojson_data = {
-        "type": "FeatureCollection",
-        "features": iran
-    }
-
     update = Changes.objects.filter(approved=False)
     context = {
-        'geometries': json.dumps(geojson_data),
-        'iranGeoData': json.dumps(iran_geojson_data),
         'provinceList': province_list,
-        'bookmarks': bookmarks,
         'vahedNames': vahed_names,
         'update': update
     }
     return render(request, 'adminMap.html', context)
+
+
+@login_required(login_url='/login')
+def iran_geojson_api(request):
+    iran_data = IranData.objects.only('id', 'geom', 'name')
+
+    features = [{
+        "type": "Feature",
+        "geometry": json.loads(data.geom.geojson),
+        "name": data.name
+    } for data in iran_data]
+
+    return JsonResponse({
+        "type": "FeatureCollection",
+        "features": features
+    })
+
+
+@login_required(login_url='/login')
+def geojson_api(request):
+    main_geo = MainGeoData.objects.only('id', 'name').first()
+    if not main_geo:
+        return JsonResponse({"type": "FeatureCollection", "features": []})
+
+    changes = Changes.objects.filter(approved=False)
+    comments = UserComments.objects.filter(user=request.user)
+
+    changes_dict = {}
+    for c in changes:
+        changes_dict.setdefault(c.geo_data_id, []).append(c.key)
+
+    comments_dict = {c.geo_id: c.text for c in comments}
+
+    geodata = GeoData.objects.filter(main_geo=main_geo) \
+        .select_related('main_geo') \
+        .only('id', 'geom', 'image', 'comment', 'property', 'main_geo')
+
+    features = []
+    for data in geodata:
+        props = data.property or {}
+        props['editingList'] = changes_dict.get(data.id, [])
+        props['sardar'] = f"http://185.213.164.61{data.image.url}" if data.image else ''
+        props['comment'] = data.comment or ''
+        props['mainName'] = data.main_geo.name if data.main_geo else ''
+        props['mainGeoData'] = data.main_geo.id if data.main_geo else ''
+        props['ownerComment'] = comments_dict.get(data.id, '')
+
+        features.append({
+            "type": "Feature",
+            "geometry": json.loads(data.geom.geojson),
+            "properties": props
+        })
+
+    return JsonResponse({
+        "type": "FeatureCollection",
+        "features": features
+    })
+
+
+@login_required(login_url='/login')
+def bookmarks_api(request):
+    # پیش‌بارگذاری bookmark و داده‌هاش
+    bookmarks = MainBookmark.objects.filter(user=request.user).prefetch_related(
+        Prefetch('bookmarkgeo_set', queryset=BookmarkGeo.objects.only('geom', 'property', 'image'))
+    )
+
+    result = []
+    for book in bookmarks:
+        features = []
+        for data in book.bookmarkgeo_set.all():
+            props = data.property or {}
+            props['sardar'] = f"http://185.213.164.61{data.image.url}" if data.image else ''
+            props['comment'] = props.get('comment', '')
+            props['editingList'] = []
+
+            features.append({
+                "type": "Feature",
+                "geometry": json.loads(data.geom.geojson),
+                "properties": props
+            })
+
+        result.append({
+            'name': book.name,
+            "type": "FeatureCollection",
+            "features": features
+        })
+
+    return JsonResponse(result, safe=False)
 
 
 @login_required(login_url='/login')
