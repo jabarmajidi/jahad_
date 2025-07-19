@@ -2327,7 +2327,7 @@ function addGroupLayerWithFeatures(geoJsonFeatures, showLayer, layerName, isBook
     option9.appendChild(option9Link);
 
     var subMenu = document.createElement('div');
-    subMenu.className = 'position-absolute border rounded p-2 shadow bg-dark';
+    subMenu.className = 'position-absolute border rounded p-2 shadow bg-primary';
     subMenu.style.top = option6Link.offsetHeight + 'px';
     subMenu.style.left = '0';
     subMenu.style.overflowY = 'scroll';
