@@ -2214,6 +2214,7 @@ function addGroupLayerWithFeatures(geoJsonFeatures, showLayer, layerName, isBook
     option5Link.innerText = 'فیلتر گذاری';
     option5.onclick = function () {
         allFeatures = geoJsonFeatures;
+        populateAttributeFields(allFeatures);
     }
     option5.appendChild(option5Link);
     var option10 = document.createElement('li');
