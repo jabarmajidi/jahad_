@@ -1881,9 +1881,9 @@
         </div>
     </div>
     <div id="loader-wrapper"
-         style="position: fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; justify-content:center; align-items:center;">
-        <div>
-            <div style="text-align: center; font-size: 1.2rem; margin-bottom: 1rem;">در حال بارگذاری...</div>
+         style="position: fixed; top:0; left:0; width:100%; height:100%; background:transparent; z-index:9999; display:flex; justify-content:center; align-items:center;">
+        <div class="rounded bg-danger opacity-75 pb-3 px-3" dir="rtl">
+            <div id="loadingText" style="text-align: center; font-size: 1.2rem; margin-bottom: 1rem;" class="text-white">در حال بارگذاری...</div>
             <div style="width: 300px; background-color: #eee; border-radius: 10px; overflow: hidden;">
                 <div id="loader-bar" style="height: 20px; width: 0%; background-color: #4caf50; transition: width 0.5s;"></div>
             </div>
@@ -1898,7 +1898,6 @@
     <script src="{% static 'js/new/Leaflet.Editable.js' %}"></script>
 
     <script>
-    console.log(0)
         const setProgress = (percent) => {
             $("#loader-bar").css("width", percent + "%");
         };
@@ -2047,36 +2046,31 @@
 
     </script>
     <script>
-    console.log(1)
         let allGeometry = null;
         let allIranGeometry = null;
         let allBookmarkes = null;
+        var loadingText = document.getElementById('loadingText')
 
         setProgress(10)
-
+        loadingText.innerText = 'بارگزاری واحد ها ...'
         $.getJSON("/api/geodata/", function (geoData) {
-            console.log(2)
-            console.log("GeoData loaded", geoData);
             allGeometry = geoData;
             addGroupLayerWithFeatures(allGeometry.features, false, allGeometry.features[0].properties.mainName)
             setProgress(33);
 
+            loadingText.innerText = 'بارگزاری استان ها ...'
             $.getJSON("/api/iran/", function (iranData) {
-                console.log("Iran Data loaded", iranData);
                 allIranGeometry = iranData;
                 addAllFeaturesIran();
                 setProgress(66);
 
-                // مرحله 3: بارگذاری بوک‌مارک‌ها
+                setTimeout(hideLoader, 500);
+
                 $.getJSON("/api/bookmarks/", function (bookmarkData) {
-                    console.log("Bookmarks loaded", bookmarkData);
                     allBookmarkes = bookmarkData;
                     for (var i = 0; i < allBookmarkes.length; i++) {
                         addGroupLayerWithFeatures(allBookmarkes[i].features, false, allBookmarkes[i].name)
                     }
-                    setProgress(100);
-
-                    setTimeout(hideLoader, 500);
                 });
             });
         });
